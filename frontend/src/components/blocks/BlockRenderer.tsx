@@ -4,7 +4,6 @@ import MarkdownBlock from "./MarkdownBlock";
 import DataTableBlock from "./DataTableBlock";
 import InsightCardsBlock from "./InsightCardsBlock";
 import LeafletMapBlock from "./LeafletMapBlock";
-import BarChartBlock from "./BarChartBlock";
 import FallbackBlock from "./FallbackBlock";
 
 export default function BlockRenderer({ blocks }: { blocks: Block[] | null | undefined }) {
@@ -32,7 +31,6 @@ function renderOne(b: Block) {
     case "data-table":    return <DataTableBlock     data={(b as any).data} />;
     case "insight-cards": return <InsightCardsBlock  data={(b as any).data} />;
     case "leaflet-map":   return <LeafletMapBlock    data={(b as any).data} />;
-    case "bar-chart":     return <BarChartBlock      data={(b as any).data} />;
     default:              return <FallbackBlock      template_id={b.template_id} data={b.data} />;
   }
 }

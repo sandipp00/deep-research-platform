@@ -41,7 +41,7 @@ Open http://localhost:5173 → register → ask anything.
 
 | Path | What |
 |---|---|
-| `frontend/` | React 18 + Vite + TypeScript + Tailwind + Framer Motion. Modular `BlockRenderer` adapts to every research block type (markdown, data-table, leaflet-map, insight-cards, bar-chart) with a JSON fallback for forward compatibility. |
+| `frontend/` | React 18 + Vite + TypeScript + Tailwind + Framer Motion. Modular `BlockRenderer` adapts to every research block type (markdown, data-table, leaflet-map, insight-cards) with a JSON fallback so unknown future block types never break the UI. |
 | `backend/` | Spring Boot 3.3, Java 21. JWT auth (register/login/me), conversations CRUD, persistent messages with JSONB blocks. `POST /api/conversations/{id}/query` streams SSE from the Python agent and writes the final assistant message + blocks to Postgres. |
 | `research-agent/` | FastAPI service (port 8004). `POST /research` returns SSE: `checkpoint` per tool call, then `blocks` (or `clarification`/`error`), then `done`. Deep Agents ReAct loop, Redis-cached tool results, OpenRouter primary + OpenAI fallback. |
 | `docker-compose.yml` | postgres, redis, research-agent, backend. Frontend runs natively for HMR. |

@@ -39,17 +39,6 @@ class LeafletMapData(BaseModel):
     markers: list[MapMarker]
 
 
-class ChartPoint(BaseModel):
-    label: str
-    value: float
-
-
-class BarChartData(BaseModel):
-    x_axis: str
-    y_axis: str
-    points: list[ChartPoint]
-
-
 # ── Block wrapper models (discriminated union) ────────────────────────────────
 
 class MarkdownBlock(BaseModel):
@@ -72,13 +61,8 @@ class LeafletMapBlock(BaseModel):
     data: LeafletMapData
 
 
-class BarChartBlock(BaseModel):
-    template_id: Literal["bar-chart"] = "bar-chart"
-    data: BarChartData
-
-
 Block = Annotated[
-    MarkdownBlock | DataTableBlock | InsightCardsBlock | LeafletMapBlock | BarChartBlock,
+    MarkdownBlock | DataTableBlock | InsightCardsBlock | LeafletMapBlock,
     Field(discriminator="template_id"),
 ]
 

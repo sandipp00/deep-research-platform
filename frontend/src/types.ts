@@ -17,16 +17,13 @@ export interface InsightItem { title: string; body: string; severity?: "info" | 
 export interface InsightCardsData { items: InsightItem[] }
 export interface MapMarker { lat: number; lon: number; label: string; popup?: string }
 export interface LeafletMapData { center: { lat: number; lon: number }; zoom?: number; markers: MapMarker[] }
-export interface ChartPoint { label: string; value: number }
-export interface BarChartData { x_axis: string; y_axis: string; points: ChartPoint[] }
 
 export type Block =
   | { template_id: "markdown"; data: MarkdownData }
   | { template_id: "data-table"; data: DataTableData }
   | { template_id: "insight-cards"; data: InsightCardsData }
   | { template_id: "leaflet-map"; data: LeafletMapData }
-  | { template_id: "bar-chart"; data: BarChartData }
-  | { template_id: string; data: unknown };  // catch-all for forward compatibility
+  | { template_id: string; data: unknown };  // catch-all — unknown types fall through to FallbackBlock
 
 export interface FollowUp { label: string; query: string; category?: string }
 

@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from research_agent.consumer.schemas import (
+from research_agent.blocks.schemas import (
     Block,
     DataTableBlock,
     DataTableData,

@@ -12,9 +12,9 @@ from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel, Field
 
 from research_agent.agent.graph import get_agent
-from research_agent.consumer.block_formatter import ToolResult, format_blocks
-from research_agent.consumer.checkpoint_formatter import format_tool_end, format_tool_start
-from research_agent.consumer.follow_up_generator import generate_follow_ups
+from research_agent.blocks.block_formatter import ToolResult, format_blocks
+from research_agent.blocks.checkpoint_formatter import format_tool_end, format_tool_start
+from research_agent.blocks.follow_up_generator import generate_follow_ups
 
 logger = logging.getLogger(__name__)
 
