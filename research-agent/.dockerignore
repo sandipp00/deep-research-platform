@@ -1,0 +1,18 @@
+# Exclude non-build files
+.git
+.github
+.venv
+env
+__pycache__
+*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache
+tests
+docs
+*.md
+!README.md
+.pre-commit-config.yaml
+.gitleaks.toml
+.DS_Store
+dist

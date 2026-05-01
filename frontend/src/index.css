@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-ink-950 text-zinc-100 font-sans antialiased;
+    background-image:
+      radial-gradient(at 10% 0%, rgba(139, 92, 246, 0.18), transparent 45%),
+      radial-gradient(at 90% 10%, rgba(236, 72, 153, 0.14), transparent 50%),
+      radial-gradient(at 50% 100%, rgba(34, 211, 238, 0.10), transparent 55%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: rgba(236, 72, 153, 0.45);
+  }
+
+  /* Custom thin scrollbars */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.16);
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/[0.04] backdrop-blur-xl border border-white/[0.06];
+  }
+  .glass-strong {
+    @apply bg-white/[0.06] backdrop-blur-2xl border border-white/[0.08];
+  }
+  .gradient-text {
+    @apply bg-grad-vivid bg-clip-text text-transparent;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 font-semibold text-white
+           bg-grad-vivid shadow-glow transition hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2 font-medium text-zinc-200
+           bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition;
+  }
+  .field {
+    @apply w-full rounded-2xl bg-white/[0.04] border border-white/[0.08] px-4 py-3
+           text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-accent-violet/60
+           focus:ring-2 focus:ring-accent-violet/20 transition;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/[0.08]
+           px-3 py-1 text-xs font-medium text-zinc-300;
+  }
+}
+
+/* Markdown content tweaks for chat messages */
+.markdown-body {
+  @apply text-zinc-100 leading-relaxed;
+}
+.markdown-body h1 { @apply text-2xl font-bold mt-4 mb-2 gradient-text; }
+.markdown-body h2 { @apply text-xl font-semibold mt-4 mb-2 text-zinc-50; }
+.markdown-body h3 { @apply text-lg font-semibold mt-3 mb-1.5 text-zinc-100; }
+.markdown-body p  { @apply my-2; }
+.markdown-body ul { @apply list-disc pl-6 my-2 space-y-1; }
+.markdown-body ol { @apply list-decimal pl-6 my-2 space-y-1; }
+.markdown-body code {
+  @apply font-mono text-[0.9em] bg-white/[0.06] px-1.5 py-0.5 rounded-md text-accent-cyan;
+}
+.markdown-body pre {
+  @apply bg-ink-900 border border-white/[0.06] rounded-xl p-4 my-3 overflow-auto;
+}
+.markdown-body pre code {
+  @apply bg-transparent p-0 text-zinc-200;
+}
+.markdown-body a {
+  @apply text-accent-cyan underline-offset-4 hover:underline;
+}
+.markdown-body blockquote {
+  @apply border-l-2 border-accent-violet/60 pl-4 my-3 text-zinc-300;
+}
+.markdown-body table {
+  @apply w-full text-sm my-3 border-collapse;
+}
+.markdown-body th, .markdown-body td {
+  @apply border border-white/[0.08] px-3 py-2;
+}
+.markdown-body th {
+  @apply bg-white/[0.04] text-zinc-300 font-medium text-left;
+}
+
+/* Leaflet dark tweaks */
+.leaflet-container {
+  @apply rounded-2xl;
+  filter: hue-rotate(180deg) invert(0.9);
+}
+.leaflet-container .leaflet-control-attribution,
+.leaflet-container .leaflet-popup-content-wrapper {
+  filter: invert(1) hue-rotate(180deg);
+}
