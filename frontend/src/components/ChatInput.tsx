@@ -28,6 +28,8 @@ export default function ChatInput({ onSend, onStop, busy, placeholder }: Props) 
   }
 
   function onKey(e: KeyboardEvent<HTMLTextAreaElement>) {
+    // Skip during IME composition (Chinese/Japanese/Korean input, mobile predictive)
+    if ((e.nativeEvent as any).isComposing || e.keyCode === 229) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       submit();

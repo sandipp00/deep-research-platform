@@ -41,8 +41,8 @@ export default function ConversationSidebar() {
           <Sparkles size={16} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-display font-bold gradient-text leading-none">Alvoff</div>
-          <div className="text-[10px] text-zinc-500 mt-0.5">research, fast.</div>
+          <div className="font-display font-bold gradient-text leading-none">Lumen</div>
+          <div className="text-[10px] text-zinc-500 mt-0.5">research, illuminated.</div>
         </div>
       </div>
 

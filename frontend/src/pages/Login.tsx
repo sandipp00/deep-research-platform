@@ -36,8 +36,8 @@ export default function Login() {
             <Sparkles size={20} />
           </div>
           <div>
-            <div className="font-display font-bold text-xl gradient-text leading-none">Alvoff</div>
-            <div className="text-xs text-zinc-400 mt-0.5">research, fast.</div>
+            <div className="font-display font-bold text-xl gradient-text leading-none">Lumen</div>
+            <div className="text-xs text-zinc-400 mt-0.5">research, illuminated.</div>
           </div>
         </div>
 

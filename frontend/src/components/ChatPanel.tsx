@@ -34,9 +34,22 @@ export default function ChatPanel() {
   const [pendingAssistantId, setPendingAssistantId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const stickToBottomRef = useRef(true);
+
+  // Track whether the user has scrolled up — if so, don't yank them back.
+  function onScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distFromBottom = el.scrollHeight - el.clientHeight - el.scrollTop;
+    stickToBottomRef.current = distFromBottom < 80;
+  }
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    if (!stickToBottomRef.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    // 'auto' (instant) during stream so rapid checkpoints don't jitter; 'smooth' otherwise.
+    el.scrollTo({ top: el.scrollHeight, behavior: streaming ? "auto" : "smooth" });
   }, [messages.length, checkpoints.length, streaming]);
 
   async function send(text: string) {
@@ -70,6 +83,7 @@ export default function ChatPanel() {
     setPendingAssistantId(tempAssistant.id);
     setCheckpoints([]);
     setStreaming(true);
+    stickToBottomRef.current = true;  // a new turn — follow it down
 
     if (messages.length === 0) {
       const newTitle = text.length > 60 ? text.slice(0, 57) + "..." : text;
@@ -174,7 +188,7 @@ export default function ChatPanel() {
   return (
     <main className="flex-1 h-full flex flex-col p-3 pl-0 min-w-0">
       <div className="glass-strong rounded-3xl flex-1 flex flex-col overflow-hidden">
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+        <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto overscroll-contain px-6 py-6 space-y-6">
           {messages.length === 0 ? (
             <Welcome onPick={(s) => send(s)} />
           ) : (

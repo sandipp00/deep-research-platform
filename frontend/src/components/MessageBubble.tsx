@@ -39,7 +39,7 @@ export default function MessageBubble({ message, streaming, checkpoints, onFollo
         <Sparkles size={16} />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-xs font-display font-semibold gradient-text mb-1.5">Alvoff</div>
+        <div className="text-xs font-display font-semibold gradient-text mb-1.5">Lumen</div>
 
         {checkpoints && checkpoints.length > 0 && (
           <CheckpointTrail items={checkpoints} active={!!streaming} />

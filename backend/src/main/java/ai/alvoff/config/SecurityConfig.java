@@ -1,6 +1,7 @@
 package ai.alvoff.config;
 
 import ai.alvoff.auth.JwtAuthenticationFilter;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -37,6 +38,12 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(a -> a
+                // Permit async re-dispatch: SSE handlers (SseEmitter) finish on a worker
+                // thread that has no SecurityContext, so when Tomcat re-dispatches the
+                // completed async response back through the filter chain it would hit
+                // AccessDenied. ASYNC dispatches are internal — the original request was
+                // already authenticated.
+                .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                 .requestMatchers("/api/auth/**", "/health", "/actuator/**").permitAll()
                 .anyRequest().authenticated()
             )

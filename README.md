@@ -1,4 +1,4 @@
-# Alvoff Fullstack
+# Lumen — Deep Research Platform
 
 A full-stack research assistant: React frontend, Spring Boot (Java 21) backend, PostgreSQL persistence, and a Python research agent that runs a Deep Agents ReAct loop with 8 custom tools and streams structured rich-media blocks (markdown, tables, maps, charts, insight cards) over SSE.
 
