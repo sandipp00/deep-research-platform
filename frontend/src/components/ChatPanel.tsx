@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { useChat } from "@/store/chat";
@@ -19,12 +19,10 @@ const SUGGESTIONS = [
 
 export default function ChatPanel() {
   const nav = useNavigate();
-  const { id: routeId } = useParams();
   const activeId = useChat((s) => s.activeId);
   const allMsgs = useChat((s) => s.messages);
   const addMessage = useChat((s) => s.addMessage);
   const updateMessage = useChat((s) => s.updateMessage);
-  const removeMessage = useChat((s) => s.removeMessage);
   const createConversation = useChat((s) => s.createConversation);
   const renameConversation = useChat((s) => s.renameConversation);
   const select = useChat((s) => s.selectConversation);

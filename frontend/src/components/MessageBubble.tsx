@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { User as UserIcon, Sparkles, ExternalLink } from "lucide-react";
+import { Sparkles, ExternalLink } from "lucide-react";
 import type { Message, Checkpoint, FollowUp } from "@/types";
 import BlockRenderer from "./blocks/BlockRenderer";
 import CheckpointTrail from "./CheckpointTrail";

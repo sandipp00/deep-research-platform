@@ -82,7 +82,7 @@ Auto-created on first run via `spring.jpa.hibernate.ddl-auto=update`. Schema:
 
 ## Adding a new block type
 
-1. Add the schema in `research-agent/src/research_agent/consumer/schemas.py` and emit it from `block_formatter.py`.
+1. Add the schema in `research-agent/src/research_agent/blocks/schemas.py` and emit it from `block_formatter.py`.
 2. Mirror the type in `frontend/src/types.ts`.
 3. Drop a new component in `frontend/src/components/blocks/<Name>Block.tsx`.
 4. Wire it into the switch in `BlockRenderer.tsx`.
