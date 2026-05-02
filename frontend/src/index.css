@@ -98,12 +98,25 @@
   @apply bg-white/[0.04] text-zinc-300 font-medium text-left;
 }
 
-/* Leaflet dark tweaks */
-.leaflet-container {
-  @apply rounded-2xl;
-  filter: hue-rotate(180deg) invert(0.9);
+/* Leaflet dark tweaks — filter only the tile pane so brand pins + popups
+   aren't hue-rotated. */
+.leaflet-container { @apply rounded-2xl; background: #0d0d1a; }
+.leaflet-tile-pane {
+  filter: hue-rotate(180deg) invert(0.92) brightness(0.95) contrast(0.95);
 }
-.leaflet-container .leaflet-control-attribution,
-.leaflet-container .leaflet-popup-content-wrapper {
-  filter: invert(1) hue-rotate(180deg);
+.leaflet-container .leaflet-control-attribution {
+  background: rgba(13, 13, 26, 0.7);
+  color: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(8px);
 }
+.leaflet-container .leaflet-control-attribution a { color: #22d3ee; }
+.leaflet-popup-content-wrapper {
+  background: #15152a;
+  color: #f1f1f4;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+.leaflet-popup-tip { background: #15152a; }
+.leaflet-popup-content { margin: 10px 14px; font-size: 13px; }
+.leaflet-popup-close-button { color: #a1a1aa !important; }
+.lumen-pin { background: transparent; border: none; }
