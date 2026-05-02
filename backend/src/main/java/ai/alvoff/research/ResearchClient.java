@@ -29,7 +29,10 @@ public class ResearchClient {
     @Value("${app.research-agent.url}")
     private String agentUrl;
 
+    // Force HTTP/1.1 — uvicorn's default httptools parser stalls on Java's HTTP/2
+    // upgrade preface for streaming POSTs and ends up reading an empty body.
     private final HttpClient client = HttpClient.newBuilder()
+        .version(HttpClient.Version.HTTP_1_1)
         .connectTimeout(Duration.ofSeconds(15))
         .build();
 
@@ -47,12 +50,13 @@ public class ResearchClient {
             "query", query,
             "conversation_history", history
         );
+        String json = mapper.writeValueAsString(body);
         HttpRequest req = HttpRequest.newBuilder()
             .uri(URI.create(agentUrl + "/research"))
             .timeout(Duration.ofMinutes(10))
             .header("Content-Type", "application/json")
             .header("Accept", "text/event-stream")
-            .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(body)))
+            .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
             .build();
 
         HttpResponse<InputStream> resp = client.send(req, HttpResponse.BodyHandlers.ofInputStream());
