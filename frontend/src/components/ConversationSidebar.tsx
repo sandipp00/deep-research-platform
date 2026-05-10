@@ -85,7 +85,7 @@ export default function ConversationSidebar() {
       </div>
 
       <div className="glass-strong rounded-2xl p-3 flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-xl bg-white/[0.08] grid place-items-center font-display font-semibold text-sm">
+        <div className="w-9 h-9 rounded-xl bg-grad-vivid grid place-items-center font-display font-semibold text-sm shadow-glow text-white">
           {user?.name?.[0]?.toUpperCase() ?? "?"}
         </div>
         <div className="flex-1 min-w-0">

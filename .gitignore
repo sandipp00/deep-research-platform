@@ -3,21 +3,17 @@
 **/.env
 !**/.env.example
 
-# Java / Maven
-backend/target/
-backend/.mvn/wrapper/maven-wrapper.jar
-*.class
-
 # Node
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 
 # Python
-research-agent/.venv/
-research-agent/__pycache__/
-research-agent/**/__pycache__/
-research-agent/.pytest_cache/
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+*.pyc
+*.pyo
 
 # IDE
 .idea/

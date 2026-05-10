@@ -1,19 +1,20 @@
-# Stage 1: build
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
-COPY pom.xml ./
-RUN mvn -B -q dependency:go-offline
 
-COPY src ./src
-RUN mvn -B -q -DskipTests package
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential libpq5 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Stage 2: runtime
-FROM eclipse-temurin:21-jre-alpine
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
-WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+COPY app ./app
 
 EXPOSE 8080
 
-ENTRYPOINT ["java","-jar","/app/app.jar"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers"]

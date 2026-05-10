@@ -42,10 +42,16 @@ const config: Config = {
           "0%": { backgroundPosition: "-400px 0" },
           "100%": { backgroundPosition: "400px 0" },
         },
+        float: {
+          "0%, 100%": { transform: "translate(0,0) scale(1)" },
+          "33%":      { transform: "translate(30px,-20px) scale(1.05)" },
+          "66%":      { transform: "translate(-20px,15px) scale(0.97)" },
+        },
       },
       animation: {
         "fade-up": "fade-up 0.35s ease-out",
         shimmer: "shimmer 2.4s linear infinite",
+        float: "float 12s ease-in-out infinite",
       },
     },
   },

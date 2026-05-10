@@ -41,4 +41,5 @@ export interface Checkpoint {
   status: string;
   content: string;
   tool?: string;
+  ts?: number;
 }

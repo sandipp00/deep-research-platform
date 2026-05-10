@@ -21,9 +21,13 @@ export default function InsightCardsBlock({ data }: { data: InsightCardsData }) 
             key={i}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
+            whileHover={{ y: -3 }}
             transition={{ delay: i * 0.05, duration: 0.3 }}
-            className={`relative rounded-2xl p-4 border border-white/[0.06] bg-gradient-to-br ${s.bg} ring-1 ${s.ring}`}
+            className={`group relative rounded-2xl p-4 border border-white/[0.06] bg-gradient-to-br ${s.bg} ring-1 ${s.ring}
+                        hover:shadow-glow hover:border-white/[0.12] transition`}
           >
+            <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition
+                            bg-gradient-to-br from-white/[0.04] to-transparent" />
             <div className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${s.text}`}>
               {s.icon}
               <span>{sev}</span>

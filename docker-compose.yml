@@ -55,12 +55,10 @@ services:
     container_name: alvoff-backend
     restart: unless-stopped
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/alvoff
-      SPRING_DATASOURCE_USERNAME: alvoff
-      SPRING_DATASOURCE_PASSWORD: alvoff
+      DATABASE_URL: postgresql+psycopg://alvoff:alvoff@postgres:5432/alvoff
       RESEARCH_AGENT_URL: http://research-agent:8004
       JWT_SECRET: ${JWT_SECRET:-change-me-in-prod-use-a-long-random-string-at-least-32-bytes}
-      JWT_EXPIRATION_MS: 86400000
+      JWT_EXPIRATION_MINUTES: 1440
       CORS_ALLOWED_ORIGINS: http://localhost:5173
     ports:
       - "8080:8080"

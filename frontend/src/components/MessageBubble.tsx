@@ -52,7 +52,7 @@ export default function MessageBubble({ message, streaming, checkpoints, onFollo
             <MarkdownBlock data={{ content: message.content }} />
           </div>
         ) : streaming ? (
-          <div className="text-sm text-zinc-400 italic">Thinking…</div>
+          <ThinkingSkeleton />
         ) : null}
 
         {message.sources && message.sources.length > 0 && (
@@ -81,6 +81,21 @@ export default function MessageBubble({ message, streaming, checkpoints, onFollo
         )}
       </div>
     </motion.div>
+  );
+}
+
+function ThinkingSkeleton() {
+  return (
+    <div className="glass rounded-2xl p-4 space-y-2.5 max-w-md">
+      {[100, 90, 75].map((w, i) => (
+        <div
+          key={i}
+          className="h-3 rounded-full bg-gradient-to-r from-white/[0.04] via-white/[0.10] to-white/[0.04]
+                     bg-[length:400px_100%] animate-shimmer"
+          style={{ width: `${w}%`, animationDelay: `${i * 120}ms` }}
+        />
+      ))}
+    </div>
   );
 }
 

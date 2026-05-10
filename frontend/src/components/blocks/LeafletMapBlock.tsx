@@ -50,8 +50,14 @@ export default function LeafletMapBlock({ data }: { data: LeafletMapData }) {
   const zoom = data.zoom ?? 13;
 
   return (
-    <div className="rounded-2xl overflow-hidden border border-white/[0.06] shadow-glow"
+    <div className="relative rounded-2xl overflow-hidden border border-white/[0.06] shadow-glow"
          style={{ height: 440 }}>
+      {markers.length > 0 && (
+        <div className="absolute top-3 left-3 z-[400] chip backdrop-blur-md bg-ink-900/70">
+          <span className="w-1.5 h-1.5 rounded-full bg-grad-vivid" />
+          {markers.length} place{markers.length === 1 ? "" : "s"}
+        </div>
+      )}
       <MapContainer
         center={[center.lat, center.lon]}
         zoom={zoom}

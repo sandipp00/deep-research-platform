@@ -43,10 +43,10 @@ export default function DataTableBlock({ data }: { data: DataTableData }) {
 
   return (
     <div className="glass rounded-2xl overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto max-h-[28rem]">
         <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-white/[0.06]">
+          <thead className="sticky top-0 z-10 backdrop-blur-md bg-ink-900/80">
+            <tr className="border-b border-white/[0.08]">
               {columns.map((c) => (
                 <th key={c}
                     className="text-left px-4 py-3 font-medium text-zinc-300 cursor-pointer select-none hover:text-white"
@@ -63,7 +63,8 @@ export default function DataTableBlock({ data }: { data: DataTableData }) {
           </thead>
           <tbody>
             {sorted.map((row, i) => (
-              <tr key={i} className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02]">
+              <tr key={i} className={`border-b border-white/[0.04] last:border-0 hover:bg-white/[0.05] transition
+                                      ${i % 2 === 1 ? "bg-white/[0.015]" : ""}`}>
                 {columns.map((c) => (
                   <td key={c} className="px-4 py-3 text-zinc-200 align-top">
                     {renderCell(row[c])}

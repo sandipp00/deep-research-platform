@@ -1,21 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { Sparkles, TrendingUp, Newspaper, MapPin, Bitcoin, DollarSign, BookOpen } from "lucide-react";
+import { useAuth } from "@/store/auth";
 import { useChat } from "@/store/chat";
 import { postSse } from "@/lib/sse";
 import type { Block, Checkpoint, FollowUp, Message } from "@/types";
 import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
 
-const SUGGESTIONS = [
-  "EV charging stations in Lucknow",
-  "Latest RBI policy update",
-  "Bitcoin price in INR",
-  "Top IT stocks on NSE today",
-  "Hospitals near Koramangala Bangalore",
-  "1000 USD to INR",
+const SUGGESTIONS: { label: string; icon: JSX.Element }[] = [
+  { label: "EV charging stations in Lucknow", icon: <MapPin size={14} className="text-accent-cyan" /> },
+  { label: "Latest RBI policy update",        icon: <Newspaper size={14} className="text-accent-pink" /> },
+  { label: "Bitcoin price in INR",            icon: <Bitcoin size={14} className="text-amber-300" /> },
+  { label: "Top IT stocks on NSE today",      icon: <TrendingUp size={14} className="text-emerald-300" /> },
+  { label: "Hospitals near Koramangala Bangalore", icon: <MapPin size={14} className="text-accent-violet" /> },
+  { label: "1000 USD to INR",                 icon: <DollarSign size={14} className="text-emerald-300" /> },
 ];
+
+function timeGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 5)  return "Burning the midnight oil";
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  if (h < 21) return "Good evening";
+  return "Working late";
+}
 
 export default function ChatPanel() {
   const nav = useNavigate();
@@ -113,7 +123,10 @@ export default function ChatPanel() {
               }
               break;
             case "checkpoint":
-              setCheckpoints((cs) => [...cs, { status: data.status, content: data.content, tool: data.tool }]);
+              setCheckpoints((cs) => [
+                ...cs,
+                { status: data.status, content: data.content, tool: data.tool, ts: Date.now() },
+              ]);
               break;
             case "blocks": {
               const payload = data.data || {};
@@ -212,30 +225,60 @@ export default function ChatPanel() {
   );
 
   function Welcome({ onPick }: { onPick: (s: string) => void }) {
+    const user = useAuth((s) => s.user);
+    const firstName = user?.name?.split(" ")[0] ?? "";
     return (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="h-full grid place-items-center text-center px-6"
+        className="relative h-full grid place-items-center text-center px-6 overflow-hidden"
       >
-        <div className="max-w-xl">
-          <div className="inline-flex items-center gap-2 chip mb-6">
+        <div className="pointer-events-none absolute inset-0 -z-0">
+          <div className="absolute -top-32 -left-24 w-[28rem] h-[28rem] rounded-full
+                          bg-accent-violet/25 blur-[100px] animate-[float_12s_ease-in-out_infinite]" />
+          <div className="absolute -top-10 right-0 w-[26rem] h-[26rem] rounded-full
+                          bg-accent-pink/20 blur-[100px] animate-[float_14s_ease-in-out_infinite_reverse]" />
+          <div className="absolute bottom-0 left-1/3 w-[24rem] h-[24rem] rounded-full
+                          bg-accent-cyan/20 blur-[110px] animate-[float_18s_ease-in-out_infinite]" />
+        </div>
+
+        <div className="relative max-w-xl">
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="inline-flex items-center gap-2 chip mb-6"
+          >
             <Sparkles size={12} className="text-accent-pink" />
             Powered by Deep Agents
-          </div>
+          </motion.div>
           <h1 className="text-4xl sm:text-5xl font-display font-bold leading-tight">
-            What can I <span className="gradient-text">research</span> for you?
+            {timeGreeting()}{firstName ? `, ${firstName}` : ""} —<br />
+            what can I <span className="gradient-text">research</span> for you?
           </h1>
           <p className="text-zinc-400 mt-3">
             Stocks · forex · crypto · news · nearby places · regulations · general research.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-8 text-left">
-            {SUGGESTIONS.map((s) => (
-              <button key={s} onClick={() => onPick(s)}
-                className="glass rounded-2xl px-4 py-3 text-sm text-zinc-200 hover:border-accent-violet/40 hover:bg-white/[0.06] transition text-left">
-                {s}
-              </button>
+            {SUGGESTIONS.map((s, i) => (
+              <motion.button
+                key={s.label}
+                onClick={() => onPick(s.label)}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + i * 0.04 }}
+                whileHover={{ y: -2 }}
+                className="glass rounded-2xl px-4 py-3 text-sm text-zinc-200
+                           hover:border-accent-violet/40 hover:bg-white/[0.07] transition
+                           text-left flex items-center gap-2.5"
+              >
+                <span className="shrink-0 w-7 h-7 rounded-xl grid place-items-center
+                                 bg-white/[0.05] border border-white/[0.06]">
+                  {s.icon}
+                </span>
+                <span className="truncate">{s.label}</span>
+              </motion.button>
             ))}
           </div>
         </div>
