@@ -42,10 +42,10 @@ A full-stack AI research assistant. Three services, all containerised, talking o
 | Tech | Why |
 |---|---|
 | **Deep Agents (LangGraph)** | Autonomous ReAct loop with planning + reflection |
-| **Claude Sonnet via OpenRouter** | Best price/quality at our scale; ephemeral prompt caching for system prompt + tool schemas |
+| **DeepSeek V4.1 Flash via OpenRouter** | Best latency/cost at our scale ($0.15/$0.60 per M tokens); ephemeral prompt caching for system prompt + tool schemas |
 | **OpenAI fallback** | Continuity if OpenRouter is degraded |
 | **Redis 7** | Per-tool result cache (TTLs: news 15m, prices 5m, places 24h, web 1h) |
-| **Exa + Tavily + DDG fallback chain** | Search resilience |
+| **Octen + Tavily + DDG fallback chain** | Search resilience |
 | **Jina Reader + PyMuPDF** | Webpage and PDF reading |
 
 ## Database schema

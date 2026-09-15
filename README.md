@@ -19,7 +19,7 @@ A full-stack research assistant: React frontend, **Python FastAPI** backend, Pos
 ```bash
 # 1. add API keys to the agent
 cp research-agent/.env.example research-agent/.env
-# fill in OPENROUTER_API_KEY and EXA_API_KEY (TAVILY_API_KEY recommended)
+# fill in OPENROUTER_API_KEY and OCTEN_API_KEY (TAVILY_API_KEY recommended)
 
 # 2. (optional) override JWT secret
 export JWT_SECRET="$(openssl rand -base64 48)"
@@ -33,15 +33,31 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 → register → ask anything.
+Open http://localhost:5173 → you'll land on the marketing page (light/dark toggle top-right) → **Get started** → ask anything. Logged-in users go straight to `/app`.
 
 > **Port note:** Postgres is mapped to host `5433` to avoid clashing with a local install. Inside the docker network the service is still on 5432.
+
+## Performance & cost
+
+Lumen defaults to the cheapest, fastest stack that still holds up on real research queries — not the biggest model available.
+
+| | Lumen (default) | Typical frontier stack |
+|---|---|---|
+| Reasoning model | [DeepSeek V4.1 Flash](https://openrouter.ai/deepseek/deepseek-v4.1-flash) via OpenRouter | Claude Sonnet / GPT-4-class |
+| Input tokens | **$0.15** / M tokens | ~$3.00 / M tokens |
+| Output tokens | **$0.60** / M tokens | ~$15.00 / M tokens |
+| Context window | 1,048,576 tokens | 200k–1M tokens |
+| Web search | [Octen](https://octen.ai) broad-search API | Legacy scraping / SERP wrappers |
+| Search latency | sub-second single query, ~1.6s for a 5-way multi-query broad search | multi-second, often several sequential calls |
+| Repeat-query latency | ~0ms (Redis cache hit, per-tool TTL) | usually uncached |
+
+Roughly **20x cheaper on input, 25x cheaper on output** than a Claude Sonnet-class model, with a wider context window — while OpenRouter's automatic provider failover and an OpenAI fallback keep the agent from going down if a single provider hiccups. `web_search` tries Octen first, then Tavily, then DuckDuckGo — all three live behind one function in `agent/tools.py`, so swapping the primary provider again is a one-file change.
 
 ## What's where
 
 | Path | What |
 |---|---|
-| `frontend/` | React 18 + Vite + TypeScript + Tailwind + Framer Motion. Modular `BlockRenderer` adapts to every research block type (markdown, data-table, leaflet-map, insight-cards) with a JSON fallback so unknown future block types never break the UI. |
+| `frontend/` | React 18 + Vite + TypeScript + Tailwind + Framer Motion. Public marketing `Landing` page at `/` with a light/dark toggle; the chat app lives at `/app`. Modular `BlockRenderer` adapts to every research block type (markdown, data-table, leaflet-map, insight-cards) with a JSON fallback so unknown future block types never break the UI. |
 | `backend/` | FastAPI 0.115 on Python 3.12. SQLAlchemy 2 + Postgres (JSONB blocks), `python-jose` JWT, `passlib` bcrypt. Auth (register/login/me), conversations CRUD, persistent messages. `POST /api/conversations/{id}/query` proxies SSE from the agent and writes the final assistant message to Postgres. |
 | `research-agent/` | FastAPI service (port 8004). `POST /research` returns SSE: `checkpoint` per tool call, then `blocks` (or `clarification`/`error`), then `done`. Deep Agents ReAct loop, Redis-cached tool results, OpenRouter primary + OpenAI fallback. |
 | `docker-compose.yml` | postgres, redis, research-agent, backend. Frontend runs natively for HMR. |

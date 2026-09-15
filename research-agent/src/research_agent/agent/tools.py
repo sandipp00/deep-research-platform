@@ -42,25 +42,25 @@ async def web_search(query: str) -> str:
     cache_key = f"research:search:{_hash(query)}"
 
     async def _fetch() -> str:
-        # Try Exa first
-        if settings.EXA_API_KEY:
+        # Try Octen first
+        if settings.OCTEN_API_KEY:
             try:
-                from exa_py import Exa
-                exa = Exa(api_key=settings.EXA_API_KEY)
-                results = await asyncio.to_thread(
-                    exa.search_and_contents,
-                    query,
-                    text=True,
-                    num_results=settings.EXA_MAX_RESULTS,
-                )
-                if results.results:
+                from octen import Octen
+                with Octen(api_key=settings.OCTEN_API_KEY) as octen:
+                    response = await asyncio.to_thread(
+                        octen.search.search,
+                        query=query,
+                        count=settings.OCTEN_MAX_RESULTS,
+                        highlight={"enable": True, "max_tokens": 300},
+                    )
+                if response.results:
                     lines = []
-                    for i, r in enumerate(results.results, 1):
-                        text = (r.text or "")[:300].strip()
-                        lines.append(f"{i}. **{r.title}**\n   {text}\n   Source: {r.url}")
+                    for i, r in enumerate(response.results, 1):
+                        text = (r.get("highlight") or "")[:300].strip()
+                        lines.append(f"{i}. **{r.get('title', '')}**\n   {text}\n   Source: {r.get('url', '')}")
                     return "\n\n".join(lines)
             except Exception as e:
-                logger.warning("Exa failed, trying Tavily: %s", e)
+                logger.warning("Octen failed, trying Tavily: %s", e)
 
         # Tavily fallback
         if settings.TAVILY_API_KEY:

@@ -64,11 +64,11 @@ def create_app() -> FastAPI:
             checks["redis"] = f"error: {e}"
         checks["openrouter"] = "configured" if settings.OPENROUTER_API_KEY else "missing"
         checks["openai"] = "configured" if settings.OPENAI_API_KEY else "missing"
-        checks["exa"] = "configured" if settings.EXA_API_KEY else "missing"
+        checks["octen"] = "configured" if settings.OCTEN_API_KEY else "missing"
         checks["tavily"] = "configured" if settings.TAVILY_API_KEY else "missing"
 
         llm_ok = settings.OPENROUTER_API_KEY or settings.OPENAI_API_KEY
-        search_ok = settings.EXA_API_KEY or settings.TAVILY_API_KEY
+        search_ok = settings.OCTEN_API_KEY or settings.TAVILY_API_KEY
         all_ok = checks["redis"] == "ok" and llm_ok and search_ok
         return JSONResponse(
             content={"status": "ready" if all_ok else "degraded", "checks": checks},

@@ -34,6 +34,6 @@ Use the parent project's `docker-compose.yml`. Or locally:
 
 ```bash
 pip install -e .
-cp .env.example .env  # fill OPENROUTER_API_KEY + EXA_API_KEY
+cp .env.example .env  # fill OPENROUTER_API_KEY + OCTEN_API_KEY
 uvicorn research_agent.server:create_app --factory --port 8004
 ```

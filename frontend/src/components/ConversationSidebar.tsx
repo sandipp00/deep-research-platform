@@ -24,14 +24,14 @@ export default function ConversationSidebar() {
 
   async function handleNew() {
     const c = await create();
-    nav(`/c/${c.id}`);
+    nav(`/app/c/${c.id}`);
   }
 
   async function handleDelete(e: React.MouseEvent, id: string) {
     e.stopPropagation();
     if (!confirm("Delete this conversation?")) return;
     await remove(id);
-    if (activeId === id) nav("/");
+    if (activeId === id) nav("/app");
   }
 
   return (
@@ -63,7 +63,7 @@ export default function ConversationSidebar() {
               return (
                 <motion.li key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                   <button
-                    onClick={() => nav(`/c/${c.id}`)}
+                    onClick={() => nav(`/app/c/${c.id}`)}
                     className={`group w-full text-left rounded-xl px-3 py-2.5 flex items-center gap-2 transition
                       ${active ? "bg-white/[0.08] border border-white/[0.10]" : "hover:bg-white/[0.04] border border-transparent"}`}
                   >

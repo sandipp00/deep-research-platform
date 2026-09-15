@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # LLM — OpenRouter primary
     OPENROUTER_API_KEY: str = ""
-    OPENROUTER_MODEL: str = "anthropic/claude-sonnet-4-6"
+    OPENROUTER_MODEL: str = "deepseek/deepseek-v4.1-flash"
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     LLM_TEMPERATURE: float = 0.3
 
@@ -28,9 +28,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o"
 
-    # Exa (primary web search)
-    EXA_API_KEY: str = ""
-    EXA_MAX_RESULTS: int = 5
+    # Octen (primary web search)
+    OCTEN_API_KEY: str = ""
+    OCTEN_MAX_RESULTS: int = 5
 
     # Tavily (fallback web search)
     TAVILY_API_KEY: str = ""

@@ -9,7 +9,7 @@ React UI ──► Spring Boot backend ──► Research Agent (this service)
    ▲                ▲                       │
    │                │                       ├─► Redis (tool result cache)
    │                │                       ├─► OpenRouter / OpenAI (LLM)
-   └── SSE ─────────┴── SSE ─────────────── ┴─► Exa / Tavily / DuckDuckGo
+   └── SSE ─────────┴── SSE ─────────────── ┴─► Octen / Tavily / DuckDuckGo
                                               OSM, yfinance, RSS, Frankfurter,
                                               CoinGecko, Wikipedia, Jina/PyMuPDF
 ```
@@ -67,7 +67,7 @@ All 8 tools wrap their external API call with a Redis cache check.
 
 | Tool | Engine(s) | TTL | Block(s) appended |
 |---|---|---|---|
-| `web_search` | Exa → Tavily → DuckDuckGo | 1 h | none (text into markdown) |
+| `web_search` | Octen → Tavily → DuckDuckGo | 1 h | none (text into markdown) |
 | `read_webpage` | Jina Reader → PyMuPDF | 6 h | none |
 | `wiki_search` | Wikipedia API | 24 h | none |
 | `nearby_places` | Nominatim + OSM Overpass | 24 h | leaflet-map + data-table |
@@ -125,7 +125,7 @@ We don't write any of that — the framework handles it.
 
 | Setting | Value |
 |---|---|
-| Primary | OpenRouter → `anthropic/claude-sonnet-4-6` (configurable via `OPENROUTER_MODEL`) |
+| Primary | OpenRouter → `deepseek/deepseek-v4.1-flash` (configurable via `OPENROUTER_MODEL`) |
 | Fallback | OpenAI → `gpt-4o` |
 | Temperature | 0.3 |
 | Prompt caching | OpenRouter `cache_control: ephemeral` on the system prompt |

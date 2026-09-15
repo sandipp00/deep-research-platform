@@ -16,7 +16,7 @@ Practice it until you can say it without thinking.
 >
 > The **backend** is FastAPI on Python 3.12 with SQLAlchemy 2 and PostgreSQL. It owns auth — register/login with JWT and bcrypt — plus persistence and the streaming bridge. When you ask a question it persists the message, opens an async httpx stream to the agent, forwards every event to the browser as SSE, and writes the final assistant message with its blocks as JSONB into Postgres.
 >
-> The **agent** is FastAPI plus the Deep Agents framework — a middleware-based ReAct loop on top of LangGraph. Eight custom tools — Exa for web search, OpenStreetMap Overpass for nearby places, yfinance, CoinGecko, RSS feeds, Wikipedia, Jina Reader for webpages — all Redis-cached with per-tool TTLs. The LLM is Claude Sonnet via OpenRouter with prompt caching, OpenAI as fallback.
+> The **agent** is FastAPI plus the Deep Agents framework — a middleware-based ReAct loop on top of LangGraph. Eight custom tools — Octen for web search, OpenStreetMap Overpass for nearby places, yfinance, CoinGecko, RSS feeds, Wikipedia, Jina Reader for webpages — all Redis-cached with per-tool TTLs. The LLM is DeepSeek V4.1 Flash via OpenRouter with prompt caching, OpenAI as fallback.
 >
 > The whole thing is one `docker compose up`. The most fun part was making the UI adaptive: schemas in Pydantic on the agent side, mirrored TypeScript types on the frontend, a switch statement in the renderer."
 
@@ -171,7 +171,7 @@ So if the agent emits a `bar-chart` block before we ship the React component, th
 
 ### "What happens if the LLM call fails?"
 
-> "Three layers of resilience. First, OpenRouter has automatic provider failover — if Anthropic 5xx's, OpenRouter tries another provider behind the same `anthropic/claude-sonnet-4-6` model ID. Second, our agent code catches exceptions in the streaming loop and emits an SSE `error` event so the frontend shows a clean message, not a hang. Third, if OpenRouter itself is down we fall back to OpenAI GPT-4o using the same LangChain `ChatOpenAI` interface — different `base_url` and `api_key`."
+> "Three layers of resilience. First, OpenRouter has automatic provider failover — if DeepSeek 5xx's, OpenRouter tries another provider behind the same `deepseek/deepseek-v4.1-flash` model ID. Second, our agent code catches exceptions in the streaming loop and emits an SSE `error` event so the frontend shows a clean message, not a hang. Third, if OpenRouter itself is down we fall back to OpenAI GPT-4o using the same LangChain `ChatOpenAI` interface — different `base_url` and `api_key`."
 
 ### "Walk me through 'Bitcoin price in INR'."
 
@@ -200,7 +200,7 @@ So if the agent emits a `bar-chart` block before we ship the React component, th
 
 | If they ask… | Answer |
 |---|---|
-| Vector DB / RAG | "Our queries are real-time data lookups — prices, news, places. RAG would help if we had a corpus to index. Wikipedia, Exa, and Tavily already cover unstructured knowledge with fresher data than any index we'd build." |
+| Vector DB / RAG | "Our queries are real-time data lookups — prices, news, places. RAG would help if we had a corpus to index. Wikipedia, Octen, and Tavily already cover unstructured knowledge with fresher data than any index we'd build." |
 | OpenAI Assistants API | "Assistants is OpenAI-specific. We use OpenRouter so we can swap to Claude, Gemini, etc. at one config flip. Deep Agents on top of LangGraph gives us model-agnostic orchestration." |
 | LangChain `AgentExecutor` | "Deep Agents is purpose-built for our shape — middleware-based ReAct with built-in planning (`write_todos`), file scratch, automatic context compaction, and tool-call repair." |
 | Plain function calling without a framework | "We considered it. The win from Deep Agents is auto-compaction at 85% of the window — for long research sessions the model would otherwise hit context limits. Better to use the library." |
