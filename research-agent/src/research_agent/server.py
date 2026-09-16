@@ -66,6 +66,9 @@ def create_app() -> FastAPI:
         checks["openai"] = "configured" if settings.OPENAI_API_KEY else "missing"
         checks["octen"] = "configured" if settings.OCTEN_API_KEY else "missing"
         checks["tavily"] = "configured" if settings.TAVILY_API_KEY else "missing"
+        checks["langsmith"] = (
+            "tracing" if settings.LANGCHAIN_TRACING_V2 and settings.LANGCHAIN_API_KEY else "disabled"
+        )
 
         llm_ok = settings.OPENROUTER_API_KEY or settings.OPENAI_API_KEY
         search_ok = settings.OCTEN_API_KEY or settings.TAVILY_API_KEY

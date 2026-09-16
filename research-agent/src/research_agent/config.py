@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -40,7 +41,25 @@ class Settings(BaseSettings):
     # Jina Reader (optional — free tier works without key)
     JINA_API_KEY: str = ""
 
+    # LangSmith (optional — tracing/eval for the LangGraph agent)
+    LANGCHAIN_TRACING_V2: bool = False
+    LANGCHAIN_API_KEY: str = ""
+    LANGCHAIN_PROJECT: str = "lumen-research-agent"
+    LANGCHAIN_ENDPOINT: str = "https://api.smith.langchain.com"
+
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+
+    # LangChain reads tracing config from os.environ directly, not from our
+    # Settings object — propagate it here once, right after load, so every
+    # module that imports get_settings() gets tracing for free with no
+    # separate bootstrap step.
+    if settings.LANGCHAIN_TRACING_V2 and settings.LANGCHAIN_API_KEY:
+        os.environ["LANGCHAIN_TRACING_V2"] = "true"
+        os.environ["LANGCHAIN_API_KEY"] = settings.LANGCHAIN_API_KEY
+        os.environ["LANGCHAIN_PROJECT"] = settings.LANGCHAIN_PROJECT
+        os.environ["LANGCHAIN_ENDPOINT"] = settings.LANGCHAIN_ENDPOINT
+
+    return settings

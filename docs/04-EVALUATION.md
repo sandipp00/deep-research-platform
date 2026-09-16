@@ -1,24 +1,24 @@
 # Evaluation
 
-Companion to [`01-PROJECT-DEEP-DIVE.md`](./01-PROJECT-DEEP-DIVE.md). There is **no evaluation harness in this repo today** — no `evals/` directory, no token/latency/cost instrumentation, no golden dataset. This doc is two things: (1) what to instrument in the code before evaluation is even possible, and (2) the evaluation suite to build on top of that instrumentation.
+Companion to [`01-PROJECT-DEEP-DIVE.md`](./01-PROJECT-DEEP-DIVE.md). There is **no evaluation harness in this repo today** — no `evals/` directory, no golden dataset. This doc is two things: (1) the tracing/instrumentation layer LangSmith now gives us for free, and (2) the evaluation suite to build on top of it.
 
-## Why this needs code changes first, not just a test suite
+## LangSmith — wired up, tracing not yet instrumentation-free for cost
 
-You can't evaluate cost or latency you never measured, and you can't grade "did it use the right tool" without a log that says which tool it used. Three gaps block evaluation today:
+`research-agent/config.py` now has `LANGCHAIN_TRACING_V2` / `LANGCHAIN_API_KEY` / `LANGCHAIN_PROJECT` / `LANGCHAIN_ENDPOINT` settings. Set `LANGCHAIN_TRACING_V2=true` + `LANGCHAIN_API_KEY` in `research-agent/.env` and every `get_agent()` run (the LangGraph ReAct loop in `agent/graph.py`) streams a full trace to [LangSmith](https://smith.langchain.com) — no manual instrumentation, because the agent is already built on LangChain/LangGraph and LangSmith hooks into that runtime directly. `GET /health/ready` reports `"langsmith": "tracing"` once a key is set (see `server.py`).
 
-### 1. No usage/cost tracking
+This closes two of the three gaps that used to block evaluation outright, with the third still open:
 
-`agent/graph.py::_build_model()` builds a `ChatOpenAI` client but nothing in `http_handler.py` reads `response_metadata["token_usage"]` off the final `AIMessage` (OpenRouter, like OpenAI, returns `prompt_tokens`/`completion_tokens` on every response — LangChain surfaces it on `on_chat_model_end` events, which `stream_research` already iterates over but currently discards). **Add:** capture `usage` on the `on_chat_model_end` branch in `http_handler.py`, multiply by the [pricing table already in the README](../README.md#performance--cost) ($0.15/$0.60 per M tokens for DeepSeek V4.1 Flash), and include `{prompt_tokens, completion_tokens, cost_usd}` in the final `blocks` SSE payload. Free per-request cost visibility, and the thing every eval run below needs to report a `$/query` number instead of guessing from token counts after the fact.
+### ~~1. No per-tool or per-request latency tracking~~ — solved by LangSmith
 
-### 2. No per-tool or per-request latency tracking
+Every trace shows per-node timing inside the ReAct loop (each tool call, each model turn) without touching `http_handler.py`'s `on_tool_start`/`on_tool_end` handling by hand.
 
-`checkpoint_formatter.py` emits human-readable progress strings but no timestamps. **Add:** wrap the `on_tool_start`/`on_tool_end` handling in `http_handler.py` with `time.monotonic()` deltas, and emit a `duration_ms` alongside each `checkpoint`. Also time the whole request (first byte to `done` event) — that's the number that matters for the README's "sub-second search" / "$X per query" claims to be backed by real data instead of vendor docs.
+### ~~2. No request tracing~~ — solved by LangSmith
 
-### 3. No request tracing
+Each run is a traceable unit in the LangSmith UI/API by default — no need to thread a hand-rolled `request_id` through `logger` calls just to answer "what happened on this specific run."
 
-Nothing ties a `web_search` call to the specific query that triggered it end-to-end in logs. **Add:** a `request_id` (`uuid4()` per `/research` call, or reuse Postgres's `Message.id` from the backend) threaded through `logger` calls and included in every SSE `checkpoint`/`error` event — makes "why did this eval case fail" a log grep instead of a guess.
+### 3. No usage/cost tracking in the app's own SSE payload — still open
 
-None of these are large changes (a few `logger.info`/dict-field additions in `http_handler.py`), but they're the prerequisite — everything below assumes they exist.
+LangSmith traces show token counts per LLM call, but that's visibility in the LangSmith UI, not in Lumen's own `blocks` SSE payload or Postgres-persisted `Message` rows — so the frontend/backend still can't show a user "$0.003 for this answer" without a separate step. **If that's wanted:** read `response_metadata["token_usage"]` off the final `AIMessage` in `http_handler.py`'s `on_chat_model_end` branch, multiply by the [pricing table in the README](../README.md#performance--cost), and include `{prompt_tokens, completion_tokens, cost_usd}` in the `blocks` payload — a few lines, orthogonal to LangSmith, only needed if per-query cost should be user-facing rather than an ops-side LangSmith lookup.
 
 ## What to evaluate
 
@@ -69,7 +69,7 @@ This is deliberately a thin custom script rather than adopting a framework whole
 |---|---|
 | **[Ragas](https://github.com/explodinggym/ragas)** | Faithfulness/groundedness scoring specifically for `web_search`/`wiki_search`-backed answers — checks the answer doesn't say more than the retrieved snippets support. |
 | **[DeepEval](https://github.com/confident-ai/deepeval)** or **[promptfoo](https://www.promptfoo.dev/)** | Turns the golden dataset above into `pytest`-style assertions with built-in LLM-as-judge metrics, if the team wants CI integration without hand-rolling the judge call. |
-| **[LangSmith](https://www.langchain.com/langsmith)** | Since the agent is already LangGraph/LangChain-based, tracing is close to free (`LANGCHAIN_TRACING_V2=true` + an API key) — gives per-node latency/token breakdown inside the ReAct loop without writing the instrumentation in gap #2 by hand. Worth adopting before hand-rolling `time.monotonic()` calls if budget allows a paid tracing tool. |
+| **[LangSmith](https://www.langchain.com/langsmith)** | Already wired up (`LANGCHAIN_TRACING_V2=true` + `LANGCHAIN_API_KEY` in `research-agent/.env`) — use its API/SDK to pull per-run traces into `run_eval.py`'s report instead of re-deriving latency from raw SSE timestamps. |
 
 ## Running it
 
@@ -79,9 +79,8 @@ This is deliberately a thin custom script rather than adopting a framework whole
 
 ## What "done" looks like
 
-- [ ] Token usage + cost surfaced in `http_handler.py` and the `blocks` SSE payload
-- [ ] Per-tool and per-request latency surfaced the same way
-- [ ] `request_id` threaded through logs and SSE events
+- [x] LangSmith tracing wired up (`config.py` settings + `.env.example`), gives per-tool/per-request latency and request-level tracing for free
+- [ ] Token usage + cost surfaced in `http_handler.py` and the `blocks` SSE payload (only needed if cost should be user-facing, not just visible in the LangSmith UI)
 - [ ] `research-agent/evals/cases/*.json` — 20-40 cases covering all 8 tools, clarification path, multi-tool queries, non-English queries
 - [ ] `research-agent/evals/run_eval.py` — runs the set, scores deterministically + LLM-as-judge, emits a summary
 - [ ] One documented baseline run (current DeepSeek V4.1 Flash + Octen config) checked into `evals/results/baseline.json` so every future change has something to diff against

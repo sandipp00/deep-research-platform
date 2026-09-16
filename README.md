@@ -53,6 +53,10 @@ Lumen defaults to the cheapest, fastest stack that still holds up on real resear
 
 Roughly **20x cheaper on input, 25x cheaper on output** than a Claude Sonnet-class model, with a wider context window — while OpenRouter's automatic provider failover and an OpenAI fallback keep the agent from going down if a single provider hiccups. `web_search` tries Octen first, then Tavily, then DuckDuckGo — all three live behind one function in `agent/tools.py`, so swapping the primary provider again is a one-file change.
 
+## Evaluation
+
+Set `LANGCHAIN_TRACING_V2=true` + `LANGCHAIN_API_KEY` in `research-agent/.env` to send every LangGraph run to [LangSmith](https://smith.langchain.com) — since the agent is already built on LangChain/LangGraph, this is the zero-instrumentation way to get per-tool-call latency, token usage, and full run traces without hand-rolling timers. `GET /health/ready` reports `"langsmith": "tracing"` once it's wired up. See [`docs/04-EVALUATION.md`](docs/04-EVALUATION.md) for the full evaluation plan (golden dataset, tool-selection/block-correctness scoring, LLM-as-judge for answer quality) built on top of it.
+
 ## What's where
 
 | Path | What |
