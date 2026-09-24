@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 jobs:
-  test-and-build:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,31 +24,29 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - run: cd frontend && npm ci
-
-      # `lint` is tsc --noEmit today (see frontend/package.json) — catches
-      # exactly the kind of type errors that shipped in past changes here.
       - run: cd frontend && npm run lint
-      - run: cd frontend && npm run build
 
-      - if: github.ref == 'refs/heads/main' && vars.ECR_REGISTRY != ''
+      - name: Build
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+        run: cd frontend && npm run build
+
+      - if: github.ref == 'refs/heads/main' && vars.S3_BUCKET != ''
         name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      - if: github.ref == 'refs/heads/main' && vars.ECR_REGISTRY != ''
-        name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@v2
+      # Deploys straight to the live S3 bucket behind CloudFront
+      # (see EC2 + S3/CloudFront deployment note in docs/) - not ECS/ECR.
+      - if: github.ref == 'refs/heads/main' && vars.S3_BUCKET != ''
+        name: Sync to S3
+        run: aws s3 sync frontend/dist s3://${{ vars.S3_BUCKET }} --delete
 
-      - if: github.ref == 'refs/heads/main' && vars.ECR_REGISTRY != ''
-        name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: frontend
-          push: true
-          build-args: |
-            VITE_API_URL=${{ vars.VITE_API_URL }}
-          tags: |
-            ${{ vars.ECR_REGISTRY }}/lumen-frontend:${{ github.sha }}
-            ${{ vars.ECR_REGISTRY }}/lumen-frontend:latest
+      - if: github.ref == 'refs/heads/main' && vars.CF_DISTRIBUTION_ID != ''
+        name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ vars.CF_DISTRIBUTION_ID }} \
+            --paths "/*"
