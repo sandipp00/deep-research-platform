@@ -1,0 +1,43 @@
+name: deploy
+
+# Fires after any of the three build workflows finishes on main. Each maps
+# to one ECS service and gets force-redeployed so it pulls the ':latest'
+# image the build workflow just pushed to ECR.
+on:
+  workflow_run:
+    workflows: ["backend", "research-agent", "frontend"]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  id-token: write   # OIDC -> AWS
+  contents: read
+
+jobs:
+  deploy:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      vars.ECS_CLUSTER != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Map build workflow -> ECS service
+        id: svc
+        run: |
+          case "${{ github.event.workflow_run.name }}" in
+            backend) echo "name=lumen-backend" >> "$GITHUB_OUTPUT" ;;
+            research-agent) echo "name=lumen-research-agent" >> "$GITHUB_OUTPUT" ;;
+            frontend) echo "name=lumen-frontend" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Force new deployment
+        run: |
+          aws ecs update-service \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --service "${{ steps.svc.outputs.name }}" \
+            --force-new-deployment

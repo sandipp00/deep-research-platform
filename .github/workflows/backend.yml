@@ -1,0 +1,49 @@
+name: backend
+
+on:
+  pull_request:
+    paths: ["backend/**", ".github/workflows/backend.yml"]
+  push:
+    branches: [main]
+    paths: ["backend/**", ".github/workflows/backend.yml"]
+
+permissions:
+  id-token: write   # OIDC -> AWS
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r backend/requirements.txt
+
+      # Smoke import today; swap for `pytest` once backend/tests/ exists.
+      - name: Smoke import
+        run: cd backend && python -c "import app.main"
+
+      - if: github.ref == 'refs/heads/main' && vars.ECR_REGISTRY != ''
+        name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - if: github.ref == 'refs/heads/main' && vars.ECR_REGISTRY != ''
+        name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - if: github.ref == 'refs/heads/main' && vars.ECR_REGISTRY != ''
+        name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: |
+            ${{ vars.ECR_REGISTRY }}/lumen-backend:${{ github.sha }}
+            ${{ vars.ECR_REGISTRY }}/lumen-backend:latest
