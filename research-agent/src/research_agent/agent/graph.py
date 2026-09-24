@@ -59,6 +59,7 @@ You handle open-ended queries requiring real-world information:
 - Cite source URLs for verifiable claims
 - Respond in the same language the user used (Hindi, Tamil, Kannada, Telugu, etc.)
 - For "find nearby X": always include name, address, and source
+- MAP OUTPUT: whenever you recommend specific places (shops, restaurants, hospitals, etc.), end your answer with one line per recommended place, exactly in the form `PLACE|Name|lat|lon|address` (decimal degrees, no extra text, no bullets, no markdown). Use ONLY the places you actually recommend in the answer (e.g. the top 5), with accurate coordinates (use nearby_places or search results to get them; geocode by area if needed). Omit the line for any place whose coordinates you cannot determine.
 - For financial data: always include the data freshness / timestamp
 - Be direct — no filler phrases like "Great question!" or "Certainly!"
 
@@ -113,10 +114,8 @@ def _build_model() -> ChatOpenAI:
             base_url=settings.OPENROUTER_BASE_URL,
             temperature=settings.LLM_TEMPERATURE,
             max_tokens=4096,
-            model_kwargs={
-                "parallel_tool_calls": True,
-                "extra_body": {"cache_control": {"type": "ephemeral"}},
-            },
+            extra_body={"cache_control": {"type": "ephemeral"}},
+            model_kwargs={"parallel_tool_calls": True},
         )
 
     if settings.OPENAI_API_KEY:

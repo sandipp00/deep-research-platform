@@ -2,6 +2,7 @@
 import json
 import logging
 import uuid
+from datetime import datetime, timezone
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -63,6 +64,8 @@ async def query_conversation(
         .all()
     ]
 
+    db.close()  # release the pooled connection; the stream can run for minutes
+
     user_msg_id = user_msg.id
     user_msg_created = user_msg.created_at.isoformat()
     conv_id_val = conv.id
@@ -80,63 +83,77 @@ async def query_conversation(
         had_error = False
         error_msg = ""
 
+        def persist() -> str:
+            # Fresh session: the request-scoped one must not be held across the stream.
+            with SessionLocal() as persist_db:
+                assistant = Message(
+                    conversation_id=conv_id_val,
+                    role=Role.ASSISTANT.value,
+                    content=error_msg if had_error else final_text,
+                    blocks=final_blocks or None,
+                    sources=final_sources or None,
+                    follow_ups=final_follow_ups or None,
+                )
+                persist_db.add(assistant)
+                conv_row = persist_db.get(Conversation, conv_id_val)
+                if conv_row is not None:
+                    conv_row.updated_at = datetime.now(timezone.utc)
+                persist_db.commit()
+                return str(assistant.id)
+
+        persisted = False
         try:
-            async for ev in stream_research(query_text, history):
-                if await request.is_disconnected():
-                    log.info("client disconnected mid-stream")
-                    break
+            try:
+                async for ev in stream_research(query_text, history):
+                    if await request.is_disconnected():
+                        log.info("client disconnected mid-stream")
+                        break
 
-                yield _sse(ev.name, ev.data)
+                    yield _sse(ev.name, ev.data)
 
+                    try:
+                        node = json.loads(ev.data)
+                    except json.JSONDecodeError:
+                        continue
+                    if not isinstance(node, dict):
+                        continue
+
+                    if ev.name == "blocks":
+                        data = node.get("data") or {}
+                        blocks = data.get("blocks")
+                        if isinstance(blocks, list):
+                            final_blocks = blocks
+                            for b in blocks:
+                                if isinstance(b, dict) and b.get("template_id") == "markdown":
+                                    final_text = (b.get("data") or {}).get("content", "") or ""
+                                    break
+                        sources = data.get("sources")
+                        if isinstance(sources, list):
+                            final_sources = sources
+                        fups = data.get("follow_ups")
+                        if isinstance(fups, list):
+                            final_follow_ups = fups
+                    elif ev.name == "clarification":
+                        final_text = node.get("content", "") or ""
+                    elif ev.name == "error":
+                        had_error = True
+                        error_msg = node.get("content", "Unknown error") or "Unknown error"
+            except Exception as e:
+                log.exception("research stream failed")
+                had_error = True
+                error_msg = f"Research service error: {e}"
+                yield _sse("error", json.dumps({"status": "failed", "content": error_msg}))
+
+            message_id = persist()
+            persisted = True
+            yield _sse("persisted", json.dumps({"messageId": message_id}))
+        finally:
+            # Client cancelled (GeneratorExit/CancelledError) before we persisted: still save partial result.
+            if not persisted and (final_text or final_blocks or had_error):
                 try:
-                    node = json.loads(ev.data)
-                except json.JSONDecodeError:
-                    continue
-
-                if ev.name == "blocks":
-                    data = node.get("data") or {}
-                    blocks = data.get("blocks")
-                    if isinstance(blocks, list):
-                        final_blocks = blocks
-                        for b in blocks:
-                            if isinstance(b, dict) and b.get("template_id") == "markdown":
-                                final_text = (b.get("data") or {}).get("content", "") or ""
-                                break
-                    sources = data.get("sources")
-                    if isinstance(sources, list):
-                        final_sources = sources
-                    fups = data.get("follow_ups")
-                    if isinstance(fups, list):
-                        final_follow_ups = fups
-                elif ev.name == "clarification":
-                    final_text = node.get("content", "") or ""
-                elif ev.name == "error":
-                    had_error = True
-                    error_msg = node.get("content", "Unknown error") or "Unknown error"
-
-        except Exception as e:
-            log.exception("research stream failed")
-            yield _sse("error", json.dumps({"status": "failed", "content": str(e)}))
-            return
-
-        # Persist assistant message in a fresh session — the request-scoped one is closed by now.
-        with SessionLocal() as persist_db:
-            assistant = Message(
-                conversation_id=conv_id_val,
-                role=Role.ASSISTANT.value,
-                content=error_msg if had_error else final_text,
-                blocks=final_blocks or None,
-                sources=final_sources or None,
-                follow_ups=final_follow_ups or None,
-            )
-            persist_db.add(assistant)
-            conv_row = persist_db.get(Conversation, conv_id_val)
-            if conv_row is not None:
-                from datetime import datetime, timezone
-                conv_row.updated_at = datetime.now(timezone.utc)
-            persist_db.commit()
-            persist_db.refresh(assistant)
-            yield _sse("persisted", json.dumps({"messageId": str(assistant.id)}))
+                    persist()
+                except Exception:
+                    log.exception("failed to persist assistant message on cancel")
 
     return StreamingResponse(
         generator(),

@@ -47,10 +47,18 @@ async def generate_follow_ups(
     tool_names: list[str],
 ) -> list[FollowUp]:
     settings = get_settings()
-    if not settings.OPENAI_API_KEY:
+    if settings.OPENAI_API_KEY:
+        client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=15)
+        model = "gpt-4o-mini"
+    elif settings.OPENROUTER_API_KEY:
+        client = AsyncOpenAI(
+            api_key=settings.OPENROUTER_API_KEY,
+            base_url=settings.OPENROUTER_BASE_URL,
+            timeout=15,
+        )
+        model = settings.OPENROUTER_MODEL
+    else:
         return []
-
-    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
     user_msg = (
         f"Original query: {query}\n\n"
@@ -59,24 +67,41 @@ async def generate_follow_ups(
     )
 
     resp = await client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=model,
         messages=[
             {"role": "system", "content": _SYSTEM},
             {"role": "user", "content": user_msg},
         ],
         temperature=0.7,
-        max_tokens=256,
-        response_format={"type": "json_object"},
+        max_tokens=600,
     )
 
-    raw = json.loads(resp.choices[0].message.content or "{}")
-    items = raw.get("follow_ups", [])
+    items = _parse_items(resp.choices[0].message.content or "")
+    if not items:
+        logger.warning("Follow-up model returned no parseable items")
     return [
         FollowUp(
-            label=item["label"][:40],
+            label=str(item["label"])[:40],
             query=item["query"],
             category=item.get("category", "deeper"),
         )
         for item in items
         if isinstance(item, dict) and "label" in item and "query" in item
     ][:3]
+
+
+def _parse_items(content: str) -> list:
+    """Leniently extract the follow_ups array from model output (fences, prose, <think>)."""
+    import re
+
+    content = re.sub(r"<think\b[^>]*>.*?</think>", "", content, flags=re.DOTALL | re.IGNORECASE)
+    m = re.search(r"\{.*\}|\[.*\]", content, flags=re.DOTALL)
+    if not m:
+        return []
+    try:
+        raw = json.loads(m.group(0))
+    except ValueError:
+        return []
+    if isinstance(raw, dict):
+        raw = raw.get("follow_ups", [])
+    return raw if isinstance(raw, list) else []

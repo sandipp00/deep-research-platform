@@ -156,11 +156,11 @@ async def stream_research(req: ResearchRequest) -> AsyncIterator[str]:
             tool_names = list({r.tool_name for r in tool_results})
             follow_ups = await asyncio.wait_for(
                 generate_follow_ups(req.query, final_text, tool_names),
-                timeout=3.0,
+                timeout=20.0,
             )
             research_response.follow_ups = follow_ups
-        except Exception:
-            logger.debug("Follow-up generation skipped")
+        except Exception as e:
+            logger.warning("Follow-up generation failed: %r", e)
 
         yield _sse("blocks", {
             "status": "completed",

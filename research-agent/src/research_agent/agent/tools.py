@@ -21,13 +21,17 @@ def _hash(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()[:16]
 
 
+_NO_CACHE_PREFIXES = ("Overpass API", "Could not geocode", "Location not found")
+
+
 async def _cached(key: str, ttl: int, coro_factory) -> str:
     cached = await cache_get(key)
     if cached:
         logger.debug("Cache hit: %s", key)
         return cached
     result = await coro_factory()
-    await cache_set(key, result, ttl)
+    if not result.startswith(_NO_CACHE_PREFIXES):
+        await cache_set(key, result, ttl)
     return result
 
 
@@ -201,6 +205,13 @@ _OSM_TAGS: dict[str, str] = {
 }
 
 
+_OVERPASS_MIRRORS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+]
+
+
 @tool
 async def nearby_places(place: str, place_type: str, radius_meters: int = 3000) -> str:
     """Find nearby places of a given type around a location using OpenStreetMap.
@@ -246,17 +257,28 @@ async def nearby_places(place: str, place_type: str, radius_meters: int = 3000) 
 );
 out body center 15;
 """
-        try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                osm_resp = await client.post(
-                    "https://overpass-api.de/api/interpreter",
-                    data={"data": overpass_query},
-                    headers={"User-Agent": "AlvoffResearchAgent/1.0"},
-                )
-                osm_resp.raise_for_status()
-                osm_data = osm_resp.json()
-        except Exception as e:
-            return f"Overpass API failed: {e}"
+        osm_data = None
+        last_err: Exception | None = None
+        for attempt in range(2):  # two passes over all mirrors, with backoff
+            for url in _OVERPASS_MIRRORS:
+                try:
+                    async with httpx.AsyncClient(timeout=httpx.Timeout(20, connect=8)) as client:
+                        osm_resp = await client.post(
+                            url,
+                            data={"data": overpass_query},
+                            headers={"User-Agent": "AlvoffResearchAgent/1.0"},
+                        )
+                        osm_resp.raise_for_status()
+                        osm_data = osm_resp.json()
+                    break
+                except Exception as e:  # 429/504/timeouts/bad JSON: try next mirror
+                    last_err = e
+                    logger.warning("Overpass %s failed: %r", url, e)
+            if osm_data is not None:
+                break
+            await asyncio.sleep(1.5 * (attempt + 1))
+        if osm_data is None:
+            return f"Overpass API unavailable on all mirrors: {last_err}"
 
         elements = osm_data.get("elements", [])
         if not elements:

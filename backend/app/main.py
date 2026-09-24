@@ -14,6 +14,7 @@ app = FastAPI(title="Lumen Backend", version="2.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$" if settings.cors_dev_localhost else None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

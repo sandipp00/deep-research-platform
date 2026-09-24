@@ -39,26 +39,23 @@ def format_blocks(
     blocks: list[Block] = []
     sources: list[str] = []
 
-    # 1. Always: markdown summary block first
-    blocks.append(MarkdownBlock(data=MarkdownData(content=final_text.strip())))
+    # 1. Extract PLACE| lines from the final answer (preferred source for map/table)
+    answer_places, clean_text = extract_places(final_text)
+    blocks.append(MarkdownBlock(data=MarkdownData(content=clean_text.strip())))
 
-    # 2. nearby_places → leaflet-map + data-table
-    place_results = [r for r in tool_results if r.tool_name == "nearby_places"]
-    if place_results:
-        raw = place_results[-1].output
-        markers = _parse_places_to_markers(raw)
-        rows = _parse_places_to_rows(raw)
-        if markers:
-            blocks.append(LeafletMapBlock(data=LeafletMapData(
-                center={"lat": markers[0].lat, "lon": markers[0].lon},
-                zoom=13,
-                markers=markers,
-            )))
-        if rows:
-            blocks.append(DataTableBlock(data=DataTableData(
-                columns=["Name", "Address", "Distance"],
-                rows=rows,
-            )))
+    # 2. Map + table: agent-recommended places first; nearby_places only as fallback
+    places = answer_places
+    if not places:
+        place_results = [r for r in tool_results if r.tool_name == "nearby_places"]
+        if place_results:
+            places = parse_place_lines(place_results[-1].output)
+    if places:
+        blocks.append(LeafletMapBlock(data=_build_map_data(places)))
+        blocks.append(DataTableBlock(data=DataTableData(
+            columns=["Name", "Address", "Distance"] if any(p.distance for p in places)
+            else ["Name", "Address"],
+            rows=[p.as_row() for p in places],
+        )))
 
     # 3. financial tools → insight-cards (only when structured data is present)
     financial = [
@@ -108,42 +105,90 @@ def format_blocks(
 
 # ── Parsers ───────────────────────────────────────────────────
 
-def _parse_places_to_markers(raw: str) -> list[MapMarker]:
-    """Parse PLACE|name|lat|lon|address lines."""
-    markers = []
-    for line in raw.splitlines():
-        if not line.startswith("PLACE|"):
-            continue
-        parts = line.split("|")
-        if len(parts) < 5:
-            continue
-        try:
-            markers.append(MapMarker(
-                lat=float(parts[2]),
-                lon=float(parts[3]),
-                label=parts[1],
-                popup=parts[4],
-            ))
-        except (ValueError, IndexError):
-            continue
-    return markers
+@dataclass
+class Place:
+    name: str
+    lat: float
+    lon: float
+    address: str = ""
+    distance: str = ""
+
+    def as_row(self) -> dict:
+        row = {"Name": self.name, "Address": self.address}
+        if self.distance:
+            row["Distance"] = self.distance
+        return row
 
 
-def _parse_places_to_rows(raw: str) -> list[dict]:
-    """Parse PLACE lines into table rows."""
-    rows = []
+def _clean_cell(s: str) -> str:
+    return re.sub(r"[*_`]", "", s).strip()
+
+
+def parse_place_line(line: str) -> Place | None:
+    """Parse one `PLACE|name|lat|lon|address[|distance]` line; None if malformed."""
+    line = line.strip().lstrip("-*• ").strip()
+    if not line.startswith("PLACE|"):
+        return None
+    parts = [p.strip() for p in line.split("|")]
+    if len(parts) < 4:
+        return None
+    name = _clean_cell(parts[1])
+    try:
+        lat, lon = float(parts[2]), float(parts[3])
+    except ValueError:
+        return None
+    if not name or not (-90 <= lat <= 90 and -180 <= lon <= 180) or (lat == 0 and lon == 0):
+        return None
+    if lat != lat or lon != lon:  # NaN
+        return None
+    return Place(
+        name=name, lat=lat, lon=lon,
+        address=_clean_cell(parts[4]) if len(parts) > 4 else "",
+        distance=parts[5] if len(parts) > 5 else "",
+    )
+
+
+def parse_place_lines(raw: str) -> list[Place]:
+    places = []
     for line in raw.splitlines():
-        if not line.startswith("PLACE|"):
+        p = parse_place_line(line)
+        if p:
+            places.append(p)
+    return places
+
+
+def extract_places(text: str) -> tuple[list[Place], str]:
+    """Return (valid places, text with ALL PLACE| lines removed)."""
+    places: list[Place] = []
+    kept: list[str] = []
+    for line in text.splitlines():
+        if line.strip().lstrip("-*• ").strip().startswith("PLACE|"):
+            p = parse_place_line(line)
+            if p:
+                places.append(p)
             continue
-        parts = line.split("|")
-        if len(parts) < 5:
-            continue
-        rows.append({
-            "Name": parts[1],
-            "Address": parts[4] if len(parts) > 4 else "",
-            "Distance": parts[5] if len(parts) > 5 else "",
-        })
-    return rows
+        kept.append(line)
+    clean = re.sub(r"\n{3,}", "\n\n", "\n".join(kept)).strip()
+    return places, clean
+
+
+def _zoom_for_span(span_deg: float) -> int:
+    for limit, z in ((0.005, 16), (0.02, 15), (0.05, 14), (0.1, 13), (0.25, 12),
+                     (0.5, 11), (1, 10), (2, 9), (5, 7), (10, 6), (30, 4)):
+        if span_deg <= limit:
+            return z
+    return 2
+
+
+def _build_map_data(places: list[Place]) -> LeafletMapData:
+    lats = [p.lat for p in places]
+    lons = [p.lon for p in places]
+    span = max(max(lats) - min(lats), max(lons) - min(lons))
+    return LeafletMapData(
+        center={"lat": (max(lats) + min(lats)) / 2, "lon": (max(lons) + min(lons)) / 2},
+        zoom=_zoom_for_span(span * 1.3),
+        markers=[MapMarker(lat=p.lat, lon=p.lon, label=p.name, popup=p.address) for p in places],
+    )
 
 
 def _parse_financial_card(result: ToolResult) -> InsightItem | None:
