@@ -1,0 +1,16 @@
+@keyframes lumen-caret { 0%, 45% { opacity: 1; } 55%, 100% { opacity: 0; } }
+@keyframes lumen-travel { 0% { transform: translateY(-100%); } 100% { transform: translateY(400%); } }
+@keyframes lumen-ring { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+
+.stream-caret {
+  display: inline-block; width: 2px; height: 1em; margin-left: 3px;
+  vertical-align: text-bottom; border-radius: 1px;
+  background: rgb(34 197 94); box-shadow: 0 0 8px rgba(34, 197, 94, .7);
+  animation: lumen-caret 1s steps(1) infinite;
+}
+.trail-glow { animation: lumen-travel 1.6s cubic-bezier(.4, 0, .2, 1) infinite; }
+.input-ring { animation: lumen-ring 2.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .stream-caret, .trail-glow, .input-ring { animation: none; }
+}

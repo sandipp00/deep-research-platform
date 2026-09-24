@@ -1,0 +1,30 @@
+.lumen-landing { overflow-x: clip; font-family: Inter, system-ui, sans-serif; }
+.lumen-serif { font-family: "Instrument Serif", "Fraunces", Georgia, serif; font-weight: 400; letter-spacing: -0.02em; }
+.lumen-glass { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.10); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.lumen-stars {
+  background-color: #05060b;
+  background-image:
+    radial-gradient(1.2px 1.2px at 12% 18%, #fff8, transparent),
+    radial-gradient(1px 1px at 72% 12%, #fff9, transparent),
+    radial-gradient(1.4px 1.4px at 38% 62%, #fff7, transparent),
+    radial-gradient(1px 1px at 88% 70%, #fff8, transparent),
+    radial-gradient(1px 1px at 22% 86%, #fff6, transparent),
+    radial-gradient(ellipse at 50% 110%, rgba(34,197,94,0.14), transparent 55%),
+    radial-gradient(ellipse at 20% 0%, rgba(80,90,255,0.12), transparent 50%);
+}
+.lumen-wordmark {
+  font-size: clamp(6rem, 30vw, 34rem); line-height: .8; white-space: nowrap;
+  background: linear-gradient(180deg, rgba(255,255,255,.95) 0%, rgba(255,255,255,.25) 55%, transparent 95%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+/* CSS fallback behind the (possibly empty) canvas: radial glow + faint grid */
+.lumen-backdrop {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 45%, rgba(52,211,153,0.10), transparent 70%),
+    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px) 0 0 / 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 80%);
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 80%);
+}
+@media (prefers-reduced-motion: reduce) { .lumen-landing * { scroll-behavior: auto !important; } }

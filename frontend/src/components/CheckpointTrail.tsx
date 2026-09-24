@@ -1,4 +1,5 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import "@/styles/motion.css";
 import {
   Search, Globe, FileText, MapPin, Newspaper, TrendingUp,
   DollarSign, Bitcoin, BookOpen, ListTodo, Loader2, Check, Sparkles,
@@ -36,11 +37,16 @@ function fmtElapsed(ms: number): string {
 }
 
 export default function CheckpointTrail({ items, active }: { items: Checkpoint[]; active: boolean }) {
+  const reduce = useReducedMotion();
   if (items.length === 0) return null;
   const first = items[0]?.ts ?? Date.now();
 
   return (
-    <div className="glass rounded-2xl p-3 mb-3 inline-block max-w-full relative overflow-hidden">
+    <motion.div
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+      className="glass rounded-2xl p-3 mb-3 inline-block max-w-full relative overflow-hidden">
       {active && (
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px
                         bg-gradient-to-r from-transparent via-accent-signal/60 to-transparent
@@ -54,7 +60,9 @@ export default function CheckpointTrail({ items, active }: { items: Checkpoint[]
         </span>
       </div>
       <ol className="relative">
-        <div className="absolute left-[7px] top-1.5 bottom-1.5 w-px bg-gradient-to-b from-accent-signal/40 to-transparent" />
+        <div className="absolute left-[7px] top-1.5 bottom-1.5 w-px overflow-hidden bg-gradient-to-b from-accent-signal/40 to-transparent">
+          {active && <div className="trail-glow absolute inset-x-0 h-1/4 bg-gradient-to-b from-transparent via-accent-signal to-transparent" />}
+        </div>
         <AnimatePresence initial={false}>
           {items.map((c, i) => {
             const isLast = i === items.length - 1;
@@ -65,21 +73,35 @@ export default function CheckpointTrail({ items, active }: { items: Checkpoint[]
             return (
               <motion.li
                 key={i}
-                initial={{ opacity: 0, x: -6 }}
+                layout={!reduce}
+                initial={{ opacity: 0, x: reduce ? 0 : -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.22, ease: "easeOut" }}
                 className="relative pl-6 pb-1.5 last:pb-0 flex items-start gap-2"
               >
-                <span
+                <motion.span
+                  animate={inProgress && !reduce ? { scale: [1, 1.18, 1] } : { scale: 1 }}
+                  transition={inProgress ? { duration: 1.2, repeat: Infinity, ease: "easeInOut" } : { type: "spring", stiffness: 500, damping: 18 }}
                   className={`absolute left-0 top-0.5 w-3.5 h-3.5 rounded-full grid place-items-center ring-2 ring-ink-900
                     ${inProgress
-                      ? "bg-accent-signal text-ink-950 shadow-[0_0_10px_rgba(34,197,94,0.6)] animate-pulse"
+                      ? "bg-accent-signal text-ink-950 shadow-[0_0_10px_rgba(34,197,94,0.6)]"
                       : "bg-accent-signal/90 text-ink-950"}`}
                 >
-                  {inProgress ? <Loader2 size={8} className="animate-spin" />
-                              : icon ?? <Check size={8} />}
-                </span>
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={inProgress ? "busy" : "done"}
+                      initial={{ scale: 0, rotate: reduce ? 0 : -90, opacity: 0 }}
+                      animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 22 }}
+                      className="grid place-items-center"
+                    >
+                      {inProgress ? <Loader2 size={8} className="animate-spin" />
+                                  : icon ?? <Check size={8} />}
+                    </motion.span>
+                  </AnimatePresence>
+                </motion.span>
                 <span className={`text-xs leading-snug ${inProgress ? "text-zinc-200" : "text-zinc-400"}`}>
                   {c.content}
                 </span>
@@ -102,6 +124,6 @@ export default function CheckpointTrail({ items, active }: { items: Checkpoint[]
           })}
         </AnimatePresence>
       </ol>
-    </div>
+    </motion.div>
   );
 }

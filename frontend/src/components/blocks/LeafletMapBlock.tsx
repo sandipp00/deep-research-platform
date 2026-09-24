@@ -1,83 +1,170 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { LeafletMapData } from "@/types";
+import { useTheme } from "@/store/theme";
+import "@/styles/map.css";
 
-// Custom on-brand pin — gradient violet→pink, glow, matches the rest of the UI.
-const pinSvg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="46" viewBox="0 0 36 46">
-    <defs>
-      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="#a78bfa"/>
-        <stop offset="50%" stop-color="#ec4899"/>
-        <stop offset="100%" stop-color="#22d3ee"/>
-      </linearGradient>
-      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-        <feGaussianBlur stdDeviation="2.2" result="b"/>
-        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-    </defs>
-    <path filter="url(#glow)" fill="url(#g)" stroke="white" stroke-width="2"
-      d="M18 2 C26 2 32 8 32 16 C32 26 18 44 18 44 C18 44 4 26 4 16 C4 8 10 2 18 2 Z"/>
-    <circle cx="18" cy="16" r="5" fill="white"/>
-  </svg>`.trim();
+const TILES = {
+  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  light: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+};
 
-const brandIcon = L.divIcon({
-  className: "lumen-pin",
-  html: pinSvg,
-  iconSize: [36, 46],
-  iconAnchor: [18, 44],
-  popupAnchor: [0, -38],
-});
+function pinIcon(n: number, active: boolean) {
+  return L.divIcon({
+    className: `lm-pin${active ? " on" : ""}`,
+    html: `<div class="lm-pin-wrap" style="animation-delay:${Math.min(n * 90, 900)}ms"><span class="lm-pin-ring"></span><span class="lm-pin-dot">${n + 1}</span></div>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+    popupAnchor: [0, -18],
+  });
+}
 
-function FitToMarkers({ markers }: { markers: { lat: number; lon: number }[] }) {
+function esc(s: string) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+}
+void esc;
+
+type Pt = { lat: number; lon: number };
+
+function fit(map: L.Map, markers: Pt[], animate: boolean) {
+  if (markers.length === 0) return;
+  if (markers.length === 1) {
+    map.setView([markers[0].lat, markers[0].lon], 15, { animate });
+    return;
+  }
+  const b = L.latLngBounds(markers.map((m) => [m.lat, m.lon] as [number, number]));
+  map.fitBounds(b, { padding: [50, 70], maxZoom: 16, animate, duration: 0.8 });
+}
+
+/** Exposes the map instance, fits on data change, and keeps size valid on container resize. */
+function MapBridge({ markers, onMap }: { markers: Pt[]; onMap: (m: L.Map) => void }) {
   const map = useMap();
+  useEffect(() => { onMap(map); }, [map, onMap]);
+  useEffect(() => { fit(map, markers, false); }, [map, markers]);
   useEffect(() => {
-    if (markers.length === 0) return;
-    if (markers.length === 1) {
-      map.setView([markers[0].lat, markers[0].lon], 15);
-      return;
-    }
-    const bounds = L.latLngBounds(markers.map((m) => [m.lat, m.lon] as [number, number]));
-    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
-  }, [map, markers]);
+    const el = map.getContainer();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => map.invalidateSize());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [map]);
   return null;
 }
 
+const Icon = ({ d }: { d: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
+);
+
 export default function LeafletMapBlock({ data }: { data: LeafletMapData }) {
+  const theme = useTheme((s) => s.theme);
   const center = data.center ?? { lat: 0, lon: 0 };
-  const markers = data.markers ?? [];
+  const markers = useMemo(() => data.markers ?? [], [data.markers]);
   const zoom = data.zoom ?? 13;
+  const [map, setMap] = useState<L.Map | null>(null);
+  const [active, setActive] = useState<number | null>(null);
+  const [full, setFull] = useState(false);
+  const markerRefs = useRef<(L.Marker | null)[]>([]);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const ctrlRef = useRef<HTMLDivElement>(null);
+  const onMap = useCallback((m: L.Map) => setMap(m), []);
+
+  useEffect(() => {
+    [ctrlRef.current, stripRef.current].forEach((el) => {
+      if (el) { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); }
+    });
+  }, [markers.length]);
+
+  useEffect(() => {
+    if (!full) return;
+    const k = (e: KeyboardEvent) => e.key === "Escape" && setFull(false);
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, [full]);
+
+  useEffect(() => {
+    if (!map) return;
+    const t = setTimeout(() => map.invalidateSize(), 50);
+    return () => clearTimeout(t);
+  }, [map, full]);
+
+  const focus = (i: number, open: boolean) => {
+    setActive(i);
+    const m = markers[i];
+    if (!map || !m) return;
+    map.flyTo([m.lat, m.lon], Math.max(map.getZoom(), 14), { duration: 0.9 });
+    if (open) setTimeout(() => markerRefs.current[i]?.openPopup(), 500);
+    stripRef.current?.children[i]?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  };
+
+  const dark = theme === "dark";
 
   return (
-    <div className="relative rounded-2xl overflow-hidden border border-white/[0.06] shadow-glow"
-         style={{ height: 440 }}>
+    <div className={`lm-root ${dark ? "lm-dark" : ""} ${full ? "lm-full" : ""}`} style={full ? undefined : { height: 460 }}>
       {markers.length > 0 && (
-        <div className="absolute top-3 left-3 z-[400] chip backdrop-blur-md bg-ink-900/70">
-          <span className="w-1.5 h-1.5 rounded-full bg-grad-vivid" />
-          {markers.length} place{markers.length === 1 ? "" : "s"}
+        <div className="lm-chip lm-glass" style={{ top: 12, left: 12 }}>
+          <i />{markers.length} place{markers.length === 1 ? "" : "s"}
         </div>
       )}
+      <div className="lm-ctrls" ref={ctrlRef}>
+        <button className="lm-btn lm-glass" aria-label="Zoom in" onClick={() => map?.zoomIn()}><Icon d="M12 5v14M5 12h14" /></button>
+        <button className="lm-btn lm-glass" aria-label="Zoom out" onClick={() => map?.zoomOut()}><Icon d="M5 12h14" /></button>
+        <button className="lm-btn lm-glass" aria-label="Fit all" onClick={() => { if (map) { setActive(null); fit(map, markers, true); } }}>
+          <Icon d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+        </button>
+        <button className="lm-btn lm-glass" aria-label="Toggle fullscreen" onClick={() => setFull((f) => !f)}>
+          <Icon d={full ? "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" : "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"} />
+        </button>
+      </div>
       <MapContainer
         center={[center.lat, center.lon]}
         zoom={zoom}
         scrollWheelZoom={false}
-        style={{ height: "100%", width: "100%" }}
+        zoomControl={false}
+        className="lm-map"
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          key={theme}
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url={dark ? TILES.dark : TILES.light}
+          subdomains="abcd"
+          maxZoom={19}
         />
-        <FitToMarkers markers={markers} />
+        <MapBridge markers={markers} onMap={onMap} />
         {markers.map((m, i) => (
-          <Marker key={i} position={[m.lat, m.lon]} icon={brandIcon}>
-            <Popup>
-              <div className="font-semibold">{m.label}</div>
-              {m.popup && <div className="text-xs mt-1 text-zinc-600">{m.popup}</div>}
+          <Marker
+            key={`${i}-${m.lat}-${m.lon}`}
+            position={[m.lat, m.lon]}
+            icon={pinIcon(i, active === i)}
+            ref={(r) => { markerRefs.current[i] = r; }}
+            eventHandlers={{ click: () => setActive(i), popupclose: () => setActive((a) => (a === i ? null : a)) }}
+          >
+            <Popup className="lm-popup" closeButton={false}>
+              <div className="lm-popup-t">{m.label}</div>
+              {m.popup && <div className="lm-popup-b">{m.popup}</div>}
             </Popup>
           </Marker>
         ))}
       </MapContainer>
+      {markers.length > 0 && (
+        <div className="lm-strip" ref={stripRef}>
+          {markers.map((m, i) => (
+            <button
+              key={i}
+              className={`lm-card lm-glass ${active === i ? "on" : ""}`}
+              onClick={() => focus(i, true)}
+              onMouseEnter={() => setActive(i)}
+              onMouseLeave={() => setActive((a) => (a === i ? null : a))}
+            >
+              <b>{i + 1}</b>
+              <div style={{ minWidth: 0 }}>
+                <span>{m.label}</span>
+                {m.popup && <small>{m.popup}</small>}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

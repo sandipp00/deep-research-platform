@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Plus, MessageSquare, Trash2, Sparkles, LogOut } from "lucide-react";
 import { useChat } from "@/store/chat";
 import { useAuth } from "@/store/auth";
@@ -17,6 +17,7 @@ export default function ConversationSidebar() {
   const user = useAuth((s) => s.user);
   const logout = useAuth((s) => s.logout);
 
+  const reduce = useReducedMotion();
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     if (routeId && routeId !== activeId) select(routeId);
@@ -58,20 +59,38 @@ export default function ConversationSidebar() {
           </div>
         ) : (
           <ul className="space-y-1">
-            {conversations.map((c) => {
+            <AnimatePresence initial>
+            {conversations.map((c, i) => {
               const active = c.id === activeId;
               return (
-                <motion.li key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <motion.li
+                  key={c.id}
+                  layout={!reduce}
+                  initial={{ opacity: 0, x: reduce ? 0 : -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: reduce ? 0 : -12 }}
+                  transition={{ delay: Math.min(i, 10) * 0.035, type: "spring", stiffness: 380, damping: 30 }}
+                  whileHover={reduce ? undefined : { x: 3 }}
+                >
                   <button
                     onClick={() => nav(`/app/c/${c.id}`)}
-                    className={`group w-full text-left rounded-xl px-3 py-2.5 flex items-center gap-2 transition
-                      ${active ? "bg-white/[0.08] border border-white/[0.10]" : "hover:bg-white/[0.04] border border-transparent"}`}
+                    className={`group relative w-full text-left rounded-xl px-3 py-2.5 flex items-center gap-2 transition-colors border
+                      ${active ? "border-white/[0.10]" : "hover:bg-white/[0.04] border-transparent"}`}
                   >
-                    <MessageSquare size={14} className={active ? "text-accent-cyan" : "text-zinc-500"} />
-                    <span className="flex-1 text-sm truncate text-zinc-200">{c.title}</span>
+                    {active && (
+                      <motion.span
+                        layoutId="conv-active"
+                        transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                        className="absolute inset-0 rounded-xl bg-white/[0.08]"
+                      >
+                        <span className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-full bg-accent-signal shadow-[0_0_10px_rgba(34,197,94,0.7)]" />
+                      </motion.span>
+                    )}
+                    <MessageSquare size={14} className={"relative " + (active ? "text-accent-cyan" : "text-zinc-500")} />
+                    <span className="relative flex-1 text-sm truncate text-zinc-200">{c.title}</span>
                     <button
                       onClick={(e) => handleDelete(e, c.id)}
-                      className="opacity-0 group-hover:opacity-100 transition text-zinc-500 hover:text-rose-400"
+                      className="relative opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition text-zinc-500 hover:text-rose-400"
                       aria-label="Delete"
                     >
                       <Trash2 size={14} />
@@ -80,6 +99,7 @@ export default function ConversationSidebar() {
                 </motion.li>
               );
             })}
+            </AnimatePresence>
           </ul>
         )}
       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Sparkles, TrendingUp, Newspaper, MapPin, Bitcoin, DollarSign, BookOpen } from "lucide-react";
 import { useAuth } from "@/store/auth";
 import { useChat } from "@/store/chat";
@@ -43,6 +43,7 @@ export default function ChatPanel() {
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [pendingAssistantId, setPendingAssistantId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const reduce = useReducedMotion();
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottomRef = useRef(true);
 
@@ -59,7 +60,7 @@ export default function ChatPanel() {
     const el = scrollRef.current;
     if (!el) return;
     // 'auto' (instant) during stream so rapid checkpoints don't jitter; 'smooth' otherwise.
-    el.scrollTo({ top: el.scrollHeight, behavior: streaming ? "auto" : "smooth" });
+    el.scrollTo({ top: el.scrollHeight, behavior: streaming || reduce ? "auto" : "smooth" });
   }, [messages.length, checkpoints.length, streaming]);
 
   async function send(text: string) {
