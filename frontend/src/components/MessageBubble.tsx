@@ -22,7 +22,7 @@ export default function MessageBubble({ message, streaming, checkpoints, onFollo
         animate={{ opacity: 1, y: 0 }}
         className="flex justify-end"
       >
-        <div className="max-w-[80%] rounded-3xl rounded-tr-md px-4 py-3 bg-grad-vivid text-white shadow-glow">
+        <div className="max-w-[80%] rounded-3xl rounded-tr-md px-4 py-3 bg-ink-800 border border-white/[0.08] text-zinc-100">
           <div className="text-sm whitespace-pre-wrap">{message.content}</div>
         </div>
       </motion.div>
@@ -35,8 +35,8 @@ export default function MessageBubble({ message, streaming, checkpoints, onFollo
       animate={{ opacity: 1, y: 0 }}
       className="flex gap-3"
     >
-      <div className="shrink-0 w-9 h-9 rounded-2xl bg-grad-vivid grid place-items-center shadow-glow">
-        <Sparkles size={16} />
+      <div className="shrink-0 w-9 h-9 rounded-2xl bg-ink-800 border border-accent-signal/30 grid place-items-center">
+        <Sparkles size={16} className="text-accent-signal" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-xs font-display font-semibold gradient-text mb-1.5">Lumen</div>

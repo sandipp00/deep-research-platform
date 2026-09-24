@@ -43,18 +43,18 @@ export default function CheckpointTrail({ items, active }: { items: Checkpoint[]
     <div className="glass rounded-2xl p-3 mb-3 inline-block max-w-full relative overflow-hidden">
       {active && (
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px
-                        bg-gradient-to-r from-transparent via-accent-pink/60 to-transparent
+                        bg-gradient-to-r from-transparent via-accent-signal/60 to-transparent
                         animate-shimmer" />
       )}
       <div className="flex items-center gap-1.5 mb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-        <Sparkles size={10} className="text-accent-pink" />
+        <Sparkles size={10} className="text-accent-signal" />
         {active ? "Working on it" : "How I got here"}
         <span className="ml-auto text-zinc-500 font-mono normal-case tracking-normal">
           {items.length} step{items.length === 1 ? "" : "s"}
         </span>
       </div>
       <ol className="relative">
-        <div className="absolute left-[7px] top-1.5 bottom-1.5 w-px bg-gradient-to-b from-accent-violet/40 via-accent-pink/30 to-transparent" />
+        <div className="absolute left-[7px] top-1.5 bottom-1.5 w-px bg-gradient-to-b from-accent-signal/40 to-transparent" />
         <AnimatePresence initial={false}>
           {items.map((c, i) => {
             const isLast = i === items.length - 1;
@@ -74,8 +74,8 @@ export default function CheckpointTrail({ items, active }: { items: Checkpoint[]
                 <span
                   className={`absolute left-0 top-0.5 w-3.5 h-3.5 rounded-full grid place-items-center ring-2 ring-ink-900
                     ${inProgress
-                      ? "bg-accent-violet text-white shadow-[0_0_10px_rgba(139,92,246,0.6)] animate-pulse"
-                      : "bg-emerald-500/90 text-white"}`}
+                      ? "bg-accent-signal text-ink-950 shadow-[0_0_10px_rgba(34,197,94,0.6)] animate-pulse"
+                      : "bg-accent-signal/90 text-ink-950"}`}
                 >
                   {inProgress ? <Loader2 size={8} className="animate-spin" />
                               : icon ?? <Check size={8} />}

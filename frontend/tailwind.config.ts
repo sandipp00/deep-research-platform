@@ -12,16 +12,17 @@ const config: Config = {
       },
       colors: {
         ink: {
-          950: "#070711",
-          900: "#0d0d1a",
-          800: "#15152a",
-          700: "#1f1f3a",
-          600: "#2a2a4a",
+          950: "#0B1220",
+          900: "#111A2E",
+          800: "#17233A",
+          700: "#22314C",
+          600: "#2C3C5C",
         },
         accent: {
           violet: "#8b5cf6",
           pink: "#ec4899",
           cyan: "#22d3ee",
+          signal: "#22C55E",
         },
       },
       backgroundImage: {
@@ -29,7 +30,7 @@ const config: Config = {
         "grad-soft": "linear-gradient(135deg,rgba(139,92,246,0.18),rgba(236,72,153,0.12) 50%,rgba(34,211,238,0.12))",
       },
       boxShadow: {
-        glow: "0 0 0 1px rgba(255,255,255,0.05), 0 8px 32px rgba(139,92,246,0.18)",
+        glow: "0 0 0 1px rgba(255,255,255,0.05), 0 8px 28px rgba(34,197,94,0.22)",
       },
       borderRadius: {
         "4xl": "2rem",

@@ -55,7 +55,7 @@ export default function ChatInput({ onSend, onStop, busy, placeholder }: Props) 
           </button>
         ) : (
           <button type="submit" disabled={!value.trim() || busy}
-                  className="shrink-0 w-10 h-10 rounded-2xl bg-grad-vivid grid place-items-center text-white shadow-glow disabled:opacity-30 disabled:pointer-events-none transition hover:scale-[1.04] active:scale-95">
+                  className="shrink-0 w-10 h-10 rounded-2xl bg-accent-signal grid place-items-center text-ink-950 shadow-glow disabled:opacity-30 disabled:pointer-events-none transition hover:scale-[1.04] active:scale-95">
             <Send size={16} />
           </button>
         )}
