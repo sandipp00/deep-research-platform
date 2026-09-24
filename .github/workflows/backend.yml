@@ -42,9 +42,8 @@ jobs:
             --instance-ids "${{ vars.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
-              "cd /home/ec2-user/app",
-              "git fetch origin main && git reset --hard origin/main",
-              "set -a; source .env.deploy; set +a; /usr/local/bin/docker-compose -f docker-compose.prod.yml up -d --build backend"
+              "git config --system --add safe.directory /home/ec2-user/app",
+              "cd /home/ec2-user/app && git fetch origin main && git reset --hard origin/main && set -a && . ./.env.deploy && set +a && /usr/local/bin/docker-compose -f docker-compose.prod.yml up -d --build backend"
             ]' \
             --query 'Command.CommandId' --output text)
           echo "CommandId: $CMD_ID"
