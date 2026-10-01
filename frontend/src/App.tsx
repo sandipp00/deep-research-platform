@@ -14,9 +14,7 @@ function Protected({ children }: { children: JSX.Element }) {
 }
 
 export default function App() {
-  const hydrate = useAuth((s) => s.hydrate);
   const initTheme = useTheme((s) => s.init);
-  useEffect(() => { hydrate(); }, [hydrate]);
   useEffect(() => { initTheme(); }, [initTheme]);
 
   return (
@@ -24,8 +22,10 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/app" element={<Protected><Chat /></Protected>} />
-      <Route path="/app/c/:id" element={<Protected><Chat /></Protected>} />
+      <Route path="/app" element={<Protected><Chat /></Protected>}>
+        <Route index element={null} />
+        <Route path="c/:id" element={null} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

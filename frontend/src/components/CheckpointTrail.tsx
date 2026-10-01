@@ -1,7 +1,7 @@
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import "@/styles/motion.css";
 import {
-  Search, Globe, FileText, MapPin, Newspaper, TrendingUp,
+  Search, Globe, MapPin, Newspaper, TrendingUp,
   DollarSign, Bitcoin, BookOpen, ListTodo, Loader2, Check, Sparkles,
 } from "lucide-react";
 import type { Checkpoint } from "@/types";

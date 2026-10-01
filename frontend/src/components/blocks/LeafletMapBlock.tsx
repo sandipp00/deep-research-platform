@@ -20,11 +20,6 @@ function pinIcon(n: number, active: boolean) {
   });
 }
 
-function esc(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-}
-void esc;
-
 type Pt = { lat: number; lon: number };
 
 function fit(map: L.Map, markers: Pt[], animate: boolean) {
@@ -37,7 +32,6 @@ function fit(map: L.Map, markers: Pt[], animate: boolean) {
   map.fitBounds(b, { padding: [50, 70], maxZoom: 16, animate, duration: 0.8 });
 }
 
-/** Exposes the map instance, fits on data change, and keeps size valid on container resize. */
 function MapBridge({ markers, onMap }: { markers: Pt[]; onMap: (m: L.Map) => void }) {
   const map = useMap();
   useEffect(() => { onMap(map); }, [map, onMap]);

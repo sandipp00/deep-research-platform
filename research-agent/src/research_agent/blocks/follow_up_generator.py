@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 
 from openai import AsyncOpenAI
 
 from ..config import get_settings
+from ..metrics import current_metrics
 from .schemas import FollowUp
 
 logger = logging.getLogger(__name__)
+
+_THINK_RE = re.compile(r"<think\b[^>]*>.*?</think>", re.DOTALL | re.IGNORECASE)
 
 _SYSTEM = """\
 You generate follow-up suggestions for a research assistant. Given the user's \
@@ -40,25 +44,50 @@ Example output:
   {"label": "Email me this summary", "query": "Email me a summary of the current Bitcoin price and trends", "category": "action"}
 ]}"""
 
+_client: AsyncOpenAI | None = None
+_model: str = ""
+_extra_body: dict | None = None
+
+
+def _get_client() -> tuple[AsyncOpenAI | None, str]:
+    global _client, _model, _extra_body
+    if _client is not None:
+        return _client, _model
+    settings = get_settings()
+    if settings.OPENROUTER_API_KEY:
+        _client = AsyncOpenAI(
+            api_key=settings.OPENROUTER_API_KEY,
+            base_url=settings.OPENROUTER_BASE_URL,
+            timeout=15,
+            max_retries=1,
+        )
+        _model = settings.FOLLOW_UP_MODEL or settings.OPENROUTER_MODEL
+        _extra_body = {"reasoning": {"enabled": False}}
+    elif settings.OPENAI_API_KEY:
+        _client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=15, max_retries=1)
+        _model = settings.FOLLOW_UP_MODEL or "gpt-4o-mini"
+    return _client, _model
+
+
+def reset_client() -> None:
+    global _client, _model, _extra_body
+    _client = None
+    _model = ""
+    _extra_body = None
+
 
 async def generate_follow_ups(
     query: str,
     final_text: str,
     tool_names: list[str],
 ) -> list[FollowUp]:
-    settings = get_settings()
-    if settings.OPENAI_API_KEY:
-        client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=15)
-        model = "gpt-4o-mini"
-    elif settings.OPENROUTER_API_KEY:
-        client = AsyncOpenAI(
-            api_key=settings.OPENROUTER_API_KEY,
-            base_url=settings.OPENROUTER_BASE_URL,
-            timeout=15,
-        )
-        model = settings.OPENROUTER_MODEL
-    else:
+    client, model = _get_client()
+    if client is None:
         return []
+
+    metrics = current_metrics()
+    if metrics is not None:
+        metrics.follow_up_model = model
 
     user_msg = (
         f"Original query: {query}\n\n"
@@ -74,7 +103,13 @@ async def generate_follow_ups(
         ],
         temperature=0.7,
         max_tokens=600,
+        **({"extra_body": _extra_body} if _extra_body else {}),
     )
+
+    usage = getattr(resp, "usage", None)
+    if metrics is not None and usage is not None:
+        metrics.follow_up_input_tokens += int(getattr(usage, "prompt_tokens", 0) or 0)
+        metrics.follow_up_output_tokens += int(getattr(usage, "completion_tokens", 0) or 0)
 
     items = _parse_items(resp.choices[0].message.content or "")
     if not items:
@@ -82,8 +117,8 @@ async def generate_follow_ups(
     return [
         FollowUp(
             label=str(item["label"])[:40],
-            query=item["query"],
-            category=item.get("category", "deeper"),
+            query=str(item["query"]),
+            category=str(item.get("category", "deeper")),
         )
         for item in items
         if isinstance(item, dict) and "label" in item and "query" in item
@@ -91,10 +126,7 @@ async def generate_follow_ups(
 
 
 def _parse_items(content: str) -> list:
-    """Leniently extract the follow_ups array from model output (fences, prose, <think>)."""
-    import re
-
-    content = re.sub(r"<think\b[^>]*>.*?</think>", "", content, flags=re.DOTALL | re.IGNORECASE)
+    content = _THINK_RE.sub("", content)
     m = re.search(r"\{.*\}|\[.*\]", content, flags=re.DOTALL)
     if not m:
         return []

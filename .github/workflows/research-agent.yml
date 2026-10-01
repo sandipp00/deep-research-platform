@@ -18,10 +18,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: cd research-agent && pip install .
-      - run: |
-          pip install pytest pytest-asyncio
-          cd research-agent && python -m pytest -q tests || echo "::warning::tests failed or none collected"
+      - run: cd research-agent && pip install ".[test]"
+      - run: cd research-agent && python -m pytest -q tests
 
   deploy:
     needs: test
@@ -34,9 +32,6 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      # Deploys to the live EC2 box (docker compose) via SSM Run Command -
-      # research-agent/.env (API keys) already lives on the box and is
-      # never touched by CI.
       - name: Redeploy research-agent on EC2 via SSM
         run: |
           CMD_ID=$(aws ssm send-command \

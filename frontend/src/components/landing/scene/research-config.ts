@@ -1,8 +1,6 @@
-/** Tunables + keyframes for the Lumen research-graph scene. Tune here. */
-
 export const PALETTE = {
   bg: "#0B1220",
-  green: "#22C55E", // brand accent (accent.signal)
+  green: "#22C55E",
   mint: "#86EFAC",
   cyan: "#22D3EE",
   violet: "#8B5CF6",
@@ -10,13 +8,12 @@ export const PALETTE = {
   dust: "#7C93B8",
 } as const;
 
-/** Agreeing clusters glow one of these colours during CROSS-CHECK. */
 export const CLUSTER_COLORS = [PALETTE.green, PALETTE.cyan, PALETTE.violet] as const;
 
 export const GRAPH = {
   seed: 20260924,
   subCount: 5,
-  sourcesPerSub: 62, // total nodes = 1 + 5 + 310 = 316 (<= 400)
+  sourcesPerSub: 62,
   subRadius: 3.4,
   relevantRatio: 0.34,
   agreeMax: 110,
@@ -24,7 +21,6 @@ export const GRAPH = {
   dustCount: 280,
 } as const;
 
-/** Stage windows in scroll progress [start, end]. */
 export const STAGES = {
   plan: [0.17, 0.3],
   search: [0.36, 0.5],
@@ -40,15 +36,15 @@ export const STAGES = {
 
 export const TUNE = {
   dprMax: 1.75,
-  progressDamp: 4.5, // higher = snappier follow of scroll
+  progressDamp: 4.5,
   mouseDamp: 3,
-  parallaxAzim: 6, // degrees
+  parallaxAzim: 6,
   parallaxElev: 4,
   pulseSpeed: 0.32,
   drift: 1,
   reducedDrift: 0.25,
   reducedTimeScale: 0.35,
-  sceneOffsetX: -1.4, // shifts graph to the right on landscape screens
+  sceneOffsetX: -1.4,
   fov: 45,
   orbitIdleDegPerSec: 1.2,
 } as const;
@@ -56,8 +52,8 @@ export const TUNE = {
 export interface CamKey {
   t: number;
   dist: number;
-  azim: number; // deg
-  elev: number; // deg
+  azim: number;
+  elev: number;
   lookY: number;
 }
 
@@ -92,7 +88,6 @@ export function sampleCamera(p: number): CamKey {
   return { ...k[k.length - 1], t: c };
 }
 
-/** smoothstep window helper */
 export function win(p: number, w: readonly [number, number]): number {
   const x = Math.min(1, Math.max(0, (p - w[0]) / (w[1] - w[0])));
   return x * x * (3 - 2 * x);

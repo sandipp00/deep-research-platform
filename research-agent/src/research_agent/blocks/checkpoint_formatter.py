@@ -1,4 +1,3 @@
-"""Maps Deep Agent tool names to user-visible progress messages."""
 from __future__ import annotations
 
 import re
@@ -75,15 +74,12 @@ def format_tool_end(tool_name: str, tool_output: str) -> str:
             return ""
 
 
-# ── Helpers ───────────────────────────────────────────────────
-
 def _extract_domain(url: str) -> str:
     match = re.search(r"https?://(?:www\.)?([^/]+)", url)
     return match.group(1) if match else url[:40]
 
 
 def _count_results(output: str) -> int:
-    # web_search returns numbered results: "1. **title**..."
     matches = re.findall(r"^\d+\.", output, re.MULTILINE)
     return len(matches) if matches else 1
 

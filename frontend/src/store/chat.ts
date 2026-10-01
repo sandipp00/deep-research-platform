@@ -37,10 +37,15 @@ export const useChat = create<ChatState>((set, get) => ({
 
   selectConversation: async (id) => {
     set({ activeId: id });
-    if (!get().messages[id]) {
-      const { data } = await api.get<Message[]>(`/conversations/${id}/messages`);
-      set((s) => ({ messages: { ...s.messages, [id]: data } }));
-    }
+    if (get().messages[id]) return;
+    const { data } = await api.get<Message[]>(`/conversations/${id}/messages`);
+    set((s) => {
+      const local = s.messages[id];
+      if (!local || local.length === 0) return { messages: { ...s.messages, [id]: data } };
+      const known = new Set(data.map((m) => m.id));
+      const pending = local.filter((m) => !known.has(m.id));
+      return { messages: { ...s.messages, [id]: [...data, ...pending] } };
+    });
   },
 
   createConversation: async () => {
@@ -87,7 +92,7 @@ export const useChat = create<ChatState>((set, get) => ({
       messages: {
         ...s.messages,
         [convId]: (s.messages[convId] || []).map((m) =>
-          m.id === id ? { ...m, ...patch } : m
+          m.id === id || m.clientKey === id ? { ...m, ...patch } : m
         ),
       },
     })),
@@ -96,7 +101,7 @@ export const useChat = create<ChatState>((set, get) => ({
     set((s) => ({
       messages: {
         ...s.messages,
-        [convId]: (s.messages[convId] || []).filter((m) => m.id !== id),
+        [convId]: (s.messages[convId] || []).filter((m) => m.id !== id && m.clientKey !== id),
       },
     })),
 }));

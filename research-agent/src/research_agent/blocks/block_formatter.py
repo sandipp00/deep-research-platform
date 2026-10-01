@@ -1,4 +1,3 @@
-"""Converts Deep Agent tool results into structured ResearchResponse blocks."""
 from __future__ import annotations
 
 import logging
@@ -39,11 +38,9 @@ def format_blocks(
     blocks: list[Block] = []
     sources: list[str] = []
 
-    # 1. Extract PLACE| lines from the final answer (preferred source for map/table)
     answer_places, clean_text = extract_places(final_text)
     blocks.append(MarkdownBlock(data=MarkdownData(content=clean_text.strip())))
 
-    # 2. Map + table: agent-recommended places first; nearby_places only as fallback
     places = answer_places
     if not places:
         place_results = [r for r in tool_results if r.tool_name == "nearby_places"]
@@ -57,7 +54,6 @@ def format_blocks(
             rows=[p.as_row() for p in places],
         )))
 
-    # 3. financial tools → insight-cards (only when structured data is present)
     financial = [
         r for r in tool_results
         if r.tool_name in ("get_stock_price", "get_crypto_price", "get_forex_rate")
@@ -69,19 +65,11 @@ def format_blocks(
             blocks.append(InsightCardsBlock(data=InsightCardsData(items=items)))
             already_has_insight_cards = True
 
-    # 3b. Fallback: if no financial tool was called but the model produced a
-    # markdown table matching a financial shape (columns including Coin/
-    # Cryptocurrency/Ticker + Price + Change), synthesize InsightItems from
-    # the markdown. Pairs with the prompt-tightening in #40 as belt-and-
-    # braces — even if MiniMax routes a crypto/stock query through
-    # web_search despite the prompt, the FE still gets its FinancialGrid.
-    # Scoped to crypto and stock shapes. #41.
     if not already_has_insight_cards:
         fallback_items = _extract_financial_cards_from_markdown(final_text)
         if fallback_items:
             blocks.append(InsightCardsBlock(data=InsightCardsData(items=fallback_items)))
 
-    # 4. latest_news → data-table
     news_results = [r for r in tool_results if r.tool_name == "latest_news"]
     if news_results:
         rows = _parse_news_to_rows(news_results[-1].output)
@@ -91,7 +79,6 @@ def format_blocks(
                 rows=rows,
             )))
 
-    # 5. Collect source URLs
     for r in tool_results:
         if r.tool_name in ("web_search", "read_webpage"):
             sources.extend(_extract_urls(r.output))
@@ -99,11 +86,9 @@ def format_blocks(
     return ResearchResponse(
         query=query,
         blocks=blocks,
-        sources=list(dict.fromkeys(sources)),  # deduplicated, order preserved
+        sources=list(dict.fromkeys(sources)),
     )
 
-
-# ── Parsers ───────────────────────────────────────────────────
 
 @dataclass
 class Place:
@@ -125,7 +110,6 @@ def _clean_cell(s: str) -> str:
 
 
 def parse_place_line(line: str) -> Place | None:
-    """Parse one `PLACE|name|lat|lon|address[|distance]` line; None if malformed."""
     line = line.strip().lstrip("-*• ").strip()
     if not line.startswith("PLACE|"):
         return None
@@ -139,7 +123,7 @@ def parse_place_line(line: str) -> Place | None:
         return None
     if not name or not (-90 <= lat <= 90 and -180 <= lon <= 180) or (lat == 0 and lon == 0):
         return None
-    if lat != lat or lon != lon:  # NaN
+    if lat != lat or lon != lon:
         return None
     return Place(
         name=name, lat=lat, lon=lon,
@@ -158,7 +142,6 @@ def parse_place_lines(raw: str) -> list[Place]:
 
 
 def extract_places(text: str) -> tuple[list[Place], str]:
-    """Return (valid places, text with ALL PLACE| lines removed)."""
     places: list[Place] = []
     kept: list[str] = []
     for line in text.splitlines():
@@ -192,13 +175,8 @@ def _build_map_data(places: list[Place]) -> LeafletMapData:
 
 
 def _parse_financial_card(result: ToolResult) -> InsightItem | None:
-    """Parse STOCK|, FOREX|, CRYPTO| lines into an InsightItem.
-
-    Returns None if no structured data is found (e.g. tool returned an error).
-    """
     raw = result.output
     try:
-        # Find the first structured line in multi-line output
         for line in raw.splitlines():
             line = line.strip()
             if result.tool_name == "get_stock_price" and line.startswith("STOCK|"):
@@ -239,25 +217,8 @@ def _parse_financial_card(result: ToolResult) -> InsightItem | None:
     except Exception as e:
         logger.warning("Failed to parse financial card for %s: %s", result.tool_name, e)
 
-    # No structured data found — skip this card
     return None
 
-
-# ── Markdown fallback parser for financial tables ─────────────
-#
-# MiniMax-M2.7 sometimes routes crypto/stock queries through web_search
-# despite the explicit "use get_crypto_price / get_stock_price" guidance
-# in _RESEARCH_SYSTEM_PROMPT (see #40). When it does, no CRYPTO|/STOCK|
-# structured line is emitted and _parse_financial_card returns nothing.
-# The model instead summarises the prices into a markdown table inside
-# its final_text. This fallback parses those tables and synthesises the
-# InsightItems _parse_financial_card would have produced, so the FE's
-# FinancialGrid renders regardless of which path the agent took.
-#
-# Intentionally scoped — only crypto-shape and stock-shape tables are
-# caught. False positives (a user asking for a comparison chart that
-# happens to include a "Price" column) would be rare and degrade
-# gracefully to extra grid cards.
 
 _COIN_COLUMN_NAMES = {"coin", "cryptocurrency", "crypto", "token", "asset"}
 _STOCK_COLUMN_NAMES = {"ticker", "symbol", "stock", "equity", "company"}
@@ -266,17 +227,10 @@ _CHANGE_COLUMN_RE = re.compile(r"\b(change|1d|24h|24 hour|change %|%\s*change)\b
 
 
 def _normalise_header(h: str) -> str:
-    """Strip markdown emphasis + whitespace from a column header cell."""
     return re.sub(r"[*_`]", "", h).strip()
 
 
 def _find_markdown_tables(text: str) -> list[tuple[list[str], list[list[str]]]]:
-    """Return (headers, rows) for every GFM-style table in `text`.
-
-    Tolerates leading/trailing whitespace, optional leading/trailing
-    pipes, and an alignment divider row (---|---|---). Skips tables with
-    < 1 data row.
-    """
     tables: list[tuple[list[str], list[list[str]]]] = []
     lines = text.splitlines()
     i = 0
@@ -286,7 +240,6 @@ def _find_markdown_tables(text: str) -> list[tuple[list[str], list[list[str]]]]:
             i += 1
             continue
         divider = lines[i + 1].strip()
-        # GFM divider looks like |---|---| or |:---:|:---:| etc.
         if not re.match(r"^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$", divider):
             i += 1
             continue
@@ -303,8 +256,6 @@ def _find_markdown_tables(text: str) -> list[tuple[list[str], list[list[str]]]]:
 
 
 def _pluck_number(cell: str) -> str | None:
-    """Extract the first numeric-looking substring from a cell, preserving
-    sign and decimal point. Returns None when nothing resembles a number."""
     if not cell:
         return None
     m = re.search(r"[+-]?[\d,]+(?:\.\d+)?", cell)
@@ -312,7 +263,6 @@ def _pluck_number(cell: str) -> str | None:
 
 
 def _classify_table(headers: list[str]) -> str | None:
-    """Return 'crypto' | 'stock' | None based on the header names."""
     lower = [h.lower() for h in headers]
     has_coin = any(h in _COIN_COLUMN_NAMES for h in lower)
     has_stock_name = any(h in _STOCK_COLUMN_NAMES for h in lower)
@@ -335,10 +285,6 @@ def _col_index(headers: list[str], predicate) -> int | None:
 
 
 def _extract_financial_cards_from_markdown(final_text: str) -> list[InsightItem]:
-    """Scan final_text for markdown tables in a crypto or stock shape and
-    synthesize one InsightItem per row. Returns [] when nothing matches.
-    Mirrors the output of _parse_financial_card as closely as possible
-    so FE's isFinancialShape detector matches both paths identically."""
     if not isinstance(final_text, str) or not final_text:
         return []
 
@@ -357,8 +303,6 @@ def _extract_financial_cards_from_markdown(final_text: str) -> list[InsightItem]
         if name_idx is None:
             continue
 
-        # Separate INR and USD columns when both are present (crypto tables
-        # frequently show both). Otherwise pick the first Price column.
         inr_idx = _col_index(headers, lambda h: "inr" in h.lower() and _PRICE_COLUMN_RE.search(h.lower()))
         usd_idx = _col_index(headers, lambda h: "usd" in h.lower() and _PRICE_COLUMN_RE.search(h.lower()))
         price_idx = _col_index(headers, lambda h: _PRICE_COLUMN_RE.search(h.lower())) if inr_idx is None and usd_idx is None else None
@@ -379,7 +323,6 @@ def _extract_financial_cards_from_markdown(final_text: str) -> list[InsightItem]
             change_num = _pluck_number(change) if change else None
 
             if kind == "crypto":
-                # Match the CRYPTO| output shape: "₹X · $Y · 24h: change"
                 body_parts = []
                 if inr: body_parts.append(f"₹{inr}")
                 if usd: body_parts.append(f"${usd}")
@@ -392,7 +335,7 @@ def _extract_financial_cards_from_markdown(final_text: str) -> list[InsightItem]
                     body=" · ".join(body_parts),
                     severity=severity,
                 ))
-            else:  # stock
+            else:
                 body_parts = []
                 if price: body_parts.append(f"Price: {price}")
                 if change: body_parts.append(f"Change: {change}")
@@ -411,7 +354,6 @@ def _extract_financial_cards_from_markdown(final_text: str) -> list[InsightItem]
 
 
 def _parse_news_to_rows(raw: str) -> list[dict]:
-    """Parse NEWS|title|source|published|link lines."""
     rows = []
     for line in raw.splitlines():
         if not line.startswith("NEWS|"):
@@ -424,15 +366,13 @@ def _parse_news_to_rows(raw: str) -> list[dict]:
             "Source": parts[2],
             "Published": parts[3],
         })
-    return rows[:10]  # cap at 10 headlines
+    return rows[:10]
 
 
 def _extract_urls(output: str) -> list[str]:
-    """Extract clean URLs from tool output, stripping trailing punctuation/numbering."""
     raw_urls = re.findall(r"https?://[^\s\)\"'<>]+", output)
     cleaned = []
     for url in raw_urls:
-        # Strip trailing punctuation that may be part of surrounding text
         url = re.sub(r"[.,;:!?\\\n]+$", "", url)
         if url and len(url) > 10:
             cleaned.append(url)

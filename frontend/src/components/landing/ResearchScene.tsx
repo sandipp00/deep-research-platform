@@ -11,11 +11,6 @@ import {
   HALO_FRAG, HALO_VERT, NODE_FRAG, NODE_VERT,
 } from "./scene/research-shaders";
 
-/**
- * Contract (consumed by Landing.tsx via React.lazy): a fixed full-viewport R3F
- * canvas visualising a research run as a growing knowledge graph.
- * `progress` is a 0..1 MotionValue of page scroll.
- */
 export interface ResearchSceneProps {
   progress: MotionValue<number>;
 }
@@ -137,7 +132,6 @@ function Graph({ progress, reduced }: { progress: MotionValue<number>; reduced: 
     u.uContract.value = win(p, STAGES.contract);
     u.uAnswer.value = win(p, STAGES.answer);
 
-    // camera: damped keyframes + idle orbit + parallax
     const k = sampleCamera(p);
     const par = reduced ? 0 : 1;
     const az = THREE.MathUtils.degToRad(k.azim + t * TUNE.orbitIdleDegPerSec * par + s.mx * TUNE.parallaxAzim * par);

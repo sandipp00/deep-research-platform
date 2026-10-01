@@ -8,19 +8,20 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
-  hydrate: () => void;
+}
+
+function readStoredUser(): User | null {
+  try {
+    const raw = localStorage.getItem("auth_user");
+    return raw && localStorage.getItem("auth_token") ? (JSON.parse(raw) as User) : null;
+  } catch {
+    return null;
+  }
 }
 
 export const useAuth = create<AuthState>((set) => ({
-  user: null,
+  user: readStoredUser(),
   loading: false,
-
-  hydrate: () => {
-    const raw = localStorage.getItem("auth_user");
-    if (raw) {
-      try { set({ user: JSON.parse(raw) }); } catch {}
-    }
-  },
 
   login: async (email, password) => {
     set({ loading: true });

@@ -64,9 +64,8 @@ def rename_conversation(
     db: Session = Depends(get_db),
 ) -> Response:
     conv = _owned_or_404(db, user, conv_id)
-    if req.title and req.title.strip():
-        conv.title = req.title.strip()
-        db.commit()
+    conv.title = req.title
+    db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

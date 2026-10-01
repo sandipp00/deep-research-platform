@@ -1,6 +1,5 @@
 import { GRAPH } from "./research-config";
 
-/** Deterministic PRNG (mulberry32). */
 export function mulberry32(seed: number) {
   let a = seed >>> 0;
   return () => {
@@ -19,7 +18,7 @@ interface N {
   dur: number;
   seed: number;
   cl: number;
-  kind: number; // 0 seed, 1 sub, 2 source
+  kind: number;
   size: number;
   rel: number;
   conf: number;
@@ -30,14 +29,14 @@ export interface GraphData {
   nodeCount: number;
   nPos: Float32Array;
   nPar: Float32Array;
-  nNode: Float32Array; // t0,dur,seed,cluster
-  nInfo: Float32Array; // kind,size,relevant,conflict
+  nNode: Float32Array;
+  nInfo: Float32Array;
   edgeVertCount: number;
   ePos: Float32Array;
   ePar: Float32Array;
   eNode: Float32Array;
-  eEdge: Float32Array; // u, eT0, eDur, kind
-  dust: Float32Array; // xyz + seed
+  eEdge: Float32Array;
+  dust: Float32Array;
 }
 
 const norm = (v: number[]): [number, number, number] => {
@@ -67,7 +66,7 @@ export function buildGraph(): GraphData {
     });
   }
 
-  const treeEdges: [number, number, number, number][] = []; // a,b,t0,dur
+  const treeEdges: [number, number, number, number][] = [];
   subs.forEach((s) => treeEdges.push([0, s, nodes[s].t0, nodes[s].dur + 0.03]));
 
   subs.forEach((s, bi) => {
@@ -93,7 +92,7 @@ export function buildGraph(): GraphData {
   const dist = (a: number, b: number) =>
     Math.hypot(nodes[a].pos[0] - nodes[b].pos[0], nodes[a].pos[1] - nodes[b].pos[1], nodes[a].pos[2] - nodes[b].pos[2]);
 
-  const cross: [number, number, number, number, number][] = []; // a,b,t0,dur,kind
+  const cross: [number, number, number, number, number][] = [];
   const seen = new Set<string>();
   for (const a of rel) {
     if (cross.length >= GRAPH.agreeMax) break;

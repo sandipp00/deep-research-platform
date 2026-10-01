@@ -1,4 +1,3 @@
-"""Deep Agent singleton — created once on first use, reused for all requests."""
 from __future__ import annotations
 
 import asyncio

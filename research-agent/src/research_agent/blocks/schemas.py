@@ -5,8 +5,6 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, Field
 
 
-# ── Block data models ─────────────────────────────────────────────────────────
-
 class MarkdownData(BaseModel):
     content: str
 
@@ -34,12 +32,10 @@ class MapMarker(BaseModel):
 
 
 class LeafletMapData(BaseModel):
-    center: dict[str, float]    # {"lat": float, "lon": float}
+    center: dict[str, float]
     zoom: int = 12
     markers: list[MapMarker]
 
-
-# ── Block wrapper models (discriminated union) ────────────────────────────────
 
 class MarkdownBlock(BaseModel):
     template_id: Literal["markdown"] = "markdown"

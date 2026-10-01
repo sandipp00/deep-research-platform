@@ -22,3 +22,4 @@ frontend/.vite/
 
 # OS
 .DS_Store
+*.tsbuildinfo

@@ -8,26 +8,26 @@ interface Step {
   text: string;
 }
 
-const QUESTION = "Did this startup really raise the $50M it's claiming?";
+const QUESTION = "Sample question: do independent tests back up a gadget's advertised battery life?";
 
 const STEPS: Step[] = [
   { icon: <ListTodo size={11} />, label: "plan", text: "Breaking the question into checkable sub-claims" },
-  { icon: <Search size={11} />, label: "search", text: "Searching for the funding announcement and round details" },
-  { icon: <Globe size={11} />, label: "read", text: "Reading the press release and a TechCrunch report" },
-  { icon: <ShieldCheck size={11} />, label: "verify", text: "Cross-checking the amount against the filed regulatory disclosure" },
+  { icon: <Search size={11} />, label: "search", text: "Searching for the spec sheet and independent reviews" },
+  { icon: <Globe size={11} />, label: "read", text: "Reading the product page and two review write-ups" },
+  { icon: <ShieldCheck size={11} />, label: "verify", text: "Cross-checking the advertised figure against measured results" },
 ];
 
-const SOURCES = ["techcrunch.com", "sec.gov", "crunchbase.com"];
+const SOURCES = ["manufacturer.example", "reviews.example", "lab-tests.example"];
 
 const ANSWER =
-  "Confirmed — the $50M Series C closed on Mar 4, filed with the SEC at $48.7M plus a $1.3M note.";
+  "Sample answer: the spec sheet states the advertised figure; independent reviews measured less under heavy use. Each claim cites its source.";
 
 const STEP_MS = 1300;
 const HOLD_MS = 2600;
 const RESET_MS = 900;
 
 export default function AgentTraceDemo() {
-  const [stepIndex, setStepIndex] = useState(-1); // -1 = not started
+  const [stepIndex, setStepIndex] = useState(-1);
   const [phase, setPhase] = useState<"tracing" | "answered" | "resetting">("tracing");
 
   useEffect(() => {
@@ -65,7 +65,7 @@ export default function AgentTraceDemo() {
     <div className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-5 sm:p-6 text-left max-w-xl mx-auto overflow-hidden">
       <div className="flex items-center gap-2 pb-4 mb-4 border-b border-white/[0.06]">
         <span className="w-2 h-2 rounded-full bg-accent-signal animate-pulse" />
-        <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-500">Live trace</span>
+        <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-500">Sample trace</span>
       </div>
 
       <div className="text-sm text-zinc-200 mb-4">{QUESTION}</div>

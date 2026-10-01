@@ -20,14 +20,12 @@ const config: Config = {
         },
         accent: {
           violet: "#8b5cf6",
-          pink: "#ec4899",
           cyan: "#22d3ee",
           signal: "#22C55E",
         },
       },
       backgroundImage: {
         "grad-vivid": "linear-gradient(135deg,#8b5cf6 0%,#ec4899 50%,#22d3ee 100%)",
-        "grad-soft": "linear-gradient(135deg,rgba(139,92,246,0.18),rgba(236,72,153,0.12) 50%,rgba(34,211,238,0.12))",
       },
       boxShadow: {
         glow: "0 0 0 1px rgba(255,255,255,0.05), 0 8px 28px rgba(34,197,94,0.22)",
@@ -36,10 +34,6 @@ const config: Config = {
         "4xl": "2rem",
       },
       keyframes: {
-        "fade-up": {
-          "0%": { opacity: "0", transform: "translateY(8px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
-        },
         shimmer: {
           "0%": { backgroundPosition: "-400px 0" },
           "100%": { backgroundPosition: "400px 0" },
@@ -51,9 +45,7 @@ const config: Config = {
         },
       },
       animation: {
-        "fade-up": "fade-up 0.35s ease-out",
         shimmer: "shimmer 2.4s linear infinite",
-        float: "float 12s ease-in-out infinite",
       },
     },
   },

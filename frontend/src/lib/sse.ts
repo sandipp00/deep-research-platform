@@ -1,4 +1,5 @@
 import { fetchEventSource } from "@microsoft/fetch-event-source";
+import { ApiError, messageFromBody } from "./errors";
 
 export interface SseEvent {
   event?: string;
@@ -36,13 +37,18 @@ export async function postSse(path: string, body: unknown, handlers: SseHandlers
         localStorage.removeItem("auth_user");
         if (!location.pathname.startsWith("/login")) location.href = "/login";
       }
-      let detail = "";
-      try { detail = (await res.json())?.detail ?? ""; } catch { /* non-JSON body */ }
-      throw new Error(detail || `Request failed (${res.status})`);
+      let body: unknown = null;
+      try {
+        const text = await res.text();
+        try { body = JSON.parse(text); } catch { body = text; }
+      } catch {
+        body = null;
+      }
+      throw new ApiError(messageFromBody(body) || `Request failed (${res.status})`, res.status);
     },
     onerror(err) {
       handlers.onError?.(err);
-      throw err;  // stop retrying
+      throw err;
     },
     onclose() {
       handlers.onClose?.();

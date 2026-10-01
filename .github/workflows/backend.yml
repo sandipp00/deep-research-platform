@@ -14,13 +14,25 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: alvoff
+          POSTGRES_PASSWORD: alvoff
+          POSTGRES_DB: alvoff
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U alvoff"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install -r backend/requirements.txt
-      # Smoke import today; swap for `pytest` once backend/tests/ exists.
-      - run: cd backend && python -c "import app.main"
+      - run: pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+      - run: cd backend && python -m pytest -q tests
 
   deploy:
     needs: test
@@ -33,9 +45,6 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      # Deploys to the live EC2 box (docker compose) via SSM Run Command -
-      # no SSH key in GitHub, no ECS/ECR (this app runs on a single
-      # t3.micro + RDS, not Fargate; see the low-cost deployment note).
       - name: Redeploy backend on EC2 via SSM
         run: |
           CMD_ID=$(aws ssm send-command \

@@ -1,6 +1,4 @@
-/** GLSL for the research graph. All uniforms are declared in every program that uses them. */
-
-const COMMON = /* glsl */ `
+const COMMON = `
 uniform float uP;
 uniform float uTime;
 uniform float uContract;
@@ -34,11 +32,11 @@ vec3 animPos(vec3 pos, vec3 par, float t0, float dur, float seed){
 }
 `;
 
-export const NODE_VERT = /* glsl */ `
+export const NODE_VERT = `
 ${COMMON}
 attribute vec3 aPar;
-attribute vec4 aNode; // t0,dur,seed,cluster
-attribute vec4 aInfo; // kind,size,relevant,conflict
+attribute vec4 aNode;
+attribute vec4 aInfo;
 varying vec3 vColor;
 varying float vAlpha;
 void main(){
@@ -60,10 +58,8 @@ void main(){
     bright = mix(1.0, mix(0.26, 1.9, isRel), uRead);
     sz *= mix(1.0, mix(0.7, 1.9, isRel), uRead);
     col = mix(col, clusterCol(aNode.w), uCheck * isRel);
-    // flashing amber on conflicting sources, resolving back to cluster colour
     col = mix(col, uAmberCol, conf * uAmber);
     bright += conf * uAmber * 1.2;
-    // searching shimmer
     bright += uSearch * 0.35 * (0.5 + 0.5 * sin(uTime * 2.0 + aNode.z * 40.0)) * (1.0 - uRead);
   }
   float fade = 1.0 - 0.9 * smoothstep(0.55, 1.0, uContract);
@@ -75,7 +71,7 @@ void main(){
   gl_Position = projectionMatrix * mv;
 }`;
 
-export const NODE_FRAG = /* glsl */ `
+export const NODE_FRAG = `
 varying vec3 vColor;
 varying float vAlpha;
 void main(){
@@ -85,11 +81,11 @@ void main(){
   gl_FragColor = vec4(vColor * glow * vAlpha, glow * vAlpha);
 }`;
 
-export const EDGE_VERT = /* glsl */ `
+export const EDGE_VERT = `
 ${COMMON}
 attribute vec3 aPar;
 attribute vec4 aNode;
-attribute vec4 aEdge; // u,eT0,eDur,kind
+attribute vec4 aEdge;
 varying float vU;
 varying float vProg;
 varying float vKind;
@@ -105,7 +101,7 @@ void main(){
   gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
 }`;
 
-export const EDGE_FRAG = /* glsl */ `
+export const EDGE_FRAG = `
 ${COMMON}
 varying float vU;
 varying float vProg;
@@ -114,7 +110,7 @@ varying float vSeed;
 varying float vCl;
 void main(){
   if (vU > vProg || vProg <= 0.001) discard;
-  float head = smoothstep(0.0, 0.12, vProg - vU); // soft growing tip
+  float head = smoothstep(0.0, 0.12, vProg - vU);
   vec3 col; float a;
   float fade = 1.0 - smoothstep(0.55, 0.95, uContract);
   if (vKind < 0.5) {
@@ -138,7 +134,7 @@ void main(){
   gl_FragColor = vec4(col * a, a);
 }`;
 
-export const DUST_VERT = /* glsl */ `
+export const DUST_VERT = `
 uniform float uTime;
 uniform float uScale;
 uniform float uDrift;
@@ -154,7 +150,7 @@ void main(){
   gl_Position = projectionMatrix * mv;
 }`;
 
-export const DUST_FRAG = /* glsl */ `
+export const DUST_FRAG = `
 uniform vec3 uDustCol;
 varying float vA;
 void main(){
@@ -164,7 +160,7 @@ void main(){
   gl_FragColor = vec4(uDustCol * g, g);
 }`;
 
-export const CORE_VERT = /* glsl */ `
+export const CORE_VERT = `
 uniform float uAnswer;
 uniform float uTime;
 varying vec3 vView;
@@ -177,7 +173,7 @@ void main(){
   gl_Position = projectionMatrix * mv;
 }`;
 
-export const CORE_FRAG = /* glsl */ `
+export const CORE_FRAG = `
 uniform float uAnswer;
 uniform float uTime;
 uniform vec3 uGreen;
@@ -196,7 +192,7 @@ void main(){
   gl_FragColor = vec4(col * a, a * 0.85);
 }`;
 
-export const HALO_VERT = /* glsl */ `
+export const HALO_VERT = `
 uniform float uAnswer;
 uniform float uScale;
 uniform float uTime;
@@ -207,7 +203,7 @@ void main(){
   gl_Position = projectionMatrix * mv;
 }`;
 
-export const HALO_FRAG = /* glsl */ `
+export const HALO_FRAG = `
 uniform float uAnswer;
 uniform vec3 uGreen;
 uniform vec3 uMint;

@@ -20,6 +20,7 @@ import {
 import { useAuth } from "@/store/auth";
 import ThemeToggle from "@/components/ThemeToggle";
 import AgentTraceDemo from "@/components/AgentTraceDemo";
+import SceneBoundary, { supportsWebGL } from "@/components/landing/SceneBoundary";
 import "@/styles/landing.css";
 
 const ResearchScene = lazy(() => import("@/components/landing/ResearchScene"));
@@ -35,12 +36,11 @@ const STAGES = [
 const STEP = 1 / (STAGES.length - 1);
 
 const GENERIC_ANSWER =
-  "Yes, that funding round happened and the amount sounds about right based on what's publicly known.";
+  "Yes, that battery-life claim sounds about right based on what I remember.";
 const LUMEN_ANSWER =
-  "Confirmed — the $50M Series C closed Mar 4, filed with the SEC at $48.7M plus a $1.3M note.";
+  "Sample answer: the spec sheet states the advertised figure; two independent reviews measured less under heavy use. Each claim links to its source.";
+const SAMPLE_SOURCES = ["manufacturer.example", "reviews.example"];
 const GITHUB = "https://github.com/AnirudhGupta007/deep-research-platform";
-
-/* ---------- small building blocks ---------- */
 
 function Words({ text, className = "", delay = 0 }: { text: string; className?: string; delay?: number }) {
   return (
@@ -91,7 +91,6 @@ const btnBase =
 const btnSolid = `${btnBase} bg-white text-zinc-950 hover:shadow-[0_0_40px_rgba(255,255,255,0.45)]`;
 const btnGhost = `${btnBase} lumen-glass text-white hover:bg-white/10 hover:shadow-[0_0_30px_rgba(74,222,128,0.25)]`;
 
-/** One pinned stage; hooks live here, not in a .map. */
 function StageScene({ index, progress, children }: { index: number; progress: MotionValue<number>; children: ReactNode }) {
   const c = index * STEP;
   const h = STEP / 2;
@@ -134,15 +133,13 @@ function RailItem({ label, i, active, onClick }: { label: string; i: number; act
   );
 }
 
-/* ---------- page ---------- */
-
 export default function Landing() {
   const user = useAuth((s) => s.user);
   const reduce = useReducedMotion();
+  const [webgl] = useState(supportsWebGL);
   const { scrollYProgress } = useScroll();
   const bar = useSpring(scrollYProgress, { stiffness: 120, damping: 30 });
 
-  // Lenis smooth scroll
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const lenis = new Lenis({ lerp: 0.1 });
@@ -156,7 +153,6 @@ export default function Landing() {
     };
   }, []);
 
-  // Pinned stage: Ask -> Plan -> Search -> Read -> Cross-check -> Answer
   const stageRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress: sp } = useScroll({ target: stageRef, offset: ["start start", "end end"] });
   const hint = useTransform(sp, [0, 0.05], [1, 0]);
@@ -181,25 +177,26 @@ export default function Landing() {
 
   return (
     <div className="lumen-landing lumen-stars relative text-zinc-100 min-h-screen">
-      {/* fixed knowledge-graph scene (code-split). progress = pinned-stage scroll so the graph finishes with ANSWER */}
       <div className="lumen-backdrop" aria-hidden />
-      <Suspense fallback={null}>
-        <ResearchScene progress={sp} />
-      </Suspense>
+      {webgl && (
+        <SceneBoundary>
+          <Suspense fallback={null}>
+            <ResearchScene progress={sp} />
+          </Suspense>
+        </SceneBoundary>
+      )}
 
-      {/* progress hairline */}
       <motion.div
         style={{ scaleX: bar }}
         className="fixed top-0 left-0 right-0 h-px origin-left bg-gradient-to-r from-transparent via-emerald-300 to-white z-50"
       />
 
-      {/* floating pill nav */}
       <header className="fixed top-4 inset-x-0 z-40 flex justify-center px-3">
         <nav className="lumen-glass rounded-full pl-5 pr-2 py-2 flex items-center gap-3 sm:gap-6 max-w-full">
           <Link to="/" className="lumen-serif text-xl leading-none">Lumen</Link>
           <div className="hidden md:flex items-center gap-5 text-sm text-zinc-300">
             <button onClick={() => scrollTo("how")} className="hover:text-white transition">How it works</button>
-            <button onClick={() => scrollTo("demo")} className="hover:text-white transition">Live demo</button>
+            <button onClick={() => scrollTo("demo")} className="hover:text-white transition">Demo</button>
             <a href={GITHUB} target="_blank" rel="noreferrer" className="hover:text-white transition">GitHub</a>
           </div>
           <ThemeToggle />
@@ -219,7 +216,6 @@ export default function Landing() {
       </header>
 
       <main className="relative z-10">
-        {/* Pinned scenes, one per research stage */}
         <div ref={stageRef} className="relative h-[600vh]">
           <div id="how" className="absolute w-px h-px top-0" />
           <div className="sticky top-0 h-screen w-full overflow-hidden">
@@ -242,14 +238,13 @@ export default function Landing() {
                       <Link to={primary} className={btnSolid}>{ctaLabel} <ArrowRight size={15} /></Link>
                     </Magnetic>
                     <Magnetic>
-                      <button onClick={() => scrollTo("demo")} className={btnGhost}>Watch a live run ↓</button>
+                      <button onClick={() => scrollTo("demo")} className={btnGhost}>Watch a sample run ↓</button>
                     </Magnetic>
                   </div>
                 )}
               </StageScene>
             ))}
 
-            {/* stage rail */}
             <nav aria-label="Research stages" className="absolute z-20 flex gap-4 sm:gap-0 sm:flex-col sm:items-end sm:justify-center sm:gap-4 bottom-5 inset-x-0 justify-center sm:inset-x-auto sm:right-6 sm:top-0 sm:bottom-0">
               {STAGES.map((st, i) => (
                 <RailItem key={st.key} label={st.key} i={i} active={active === i} onClick={() => goStage(i)} />
@@ -258,7 +253,6 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* 4 demo + comparison */}
         <section id="demo" className="relative px-5 sm:px-8 pt-24 pb-28 bg-gradient-to-b from-transparent via-[#05060b]/85 to-[#05060b]">
           <div className="max-w-3xl mx-auto text-center mb-12">
             <h2 className="lumen-serif text-4xl sm:text-6xl leading-tight">
@@ -295,7 +289,7 @@ export default function Landing() {
                 </div>
                 <p className="text-sm text-zinc-200 leading-relaxed">{LUMEN_ANSWER}</p>
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {["techcrunch.com", "sec.gov"].map((s) => (
+                  {SAMPLE_SOURCES.map((s) => (
                     <span key={s} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-zinc-400">{s}</span>
                   ))}
                 </div>
@@ -304,7 +298,6 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* 5 footer horizon */}
         <footer className="relative overflow-hidden bg-[#05060b] rounded-t-[50%/60px] border-t border-white/10 shadow-[0_-30px_120px_rgba(52,211,153,0.10)] pt-20">
           <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-10">
             <div className="col-span-2 md:col-span-1">
@@ -317,7 +310,7 @@ export default function Landing() {
             </div>
             <FooterCol title="Menu">
               <button onClick={() => scrollTo("how")}>How it works</button>
-              <button onClick={() => scrollTo("demo")}>Live demo</button>
+              <button onClick={() => scrollTo("demo")}>Demo</button>
               {user ? <Link to="/app">Open app</Link> : <Link to="/login">Log in</Link>}
             </FooterCol>
             <FooterCol title="Socials">

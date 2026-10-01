@@ -1,4 +1,3 @@
-"""FastAPI server — Redis lifespan + POST /research SSE endpoint."""
 from __future__ import annotations
 
 import logging
@@ -43,9 +42,10 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=settings.cors_origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type", "Accept"],
     )
 
     Instrumentator().instrument(app).expose(app)
@@ -61,7 +61,7 @@ def create_app() -> FastAPI:
             await get_redis().ping()
             checks["redis"] = "ok"
         except Exception as e:
-            checks["redis"] = f"error: {e}"
+            checks["redis"] = f"error: {type(e).__name__}"
         checks["openrouter"] = "configured" if settings.OPENROUTER_API_KEY else "missing"
         checks["openai"] = "configured" if settings.OPENAI_API_KEY else "missing"
         checks["octen"] = "configured" if settings.OCTEN_API_KEY else "missing"
@@ -80,11 +80,6 @@ def create_app() -> FastAPI:
 
     @app.post("/research", tags=["research"])
     async def research(req: ResearchRequest):
-        """Stream research progress as SSE.
-
-        Events: `checkpoint` (progress), `blocks` (final blocks), `clarification`,
-        `error`, `done`.
-        """
         return StreamingResponse(
             stream_research(req),
             media_type="text/event-stream",

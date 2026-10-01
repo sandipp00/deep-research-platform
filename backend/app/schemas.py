@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from pydantic.alias_generators import to_camel
 
 
@@ -39,7 +39,15 @@ class CreateConversationRequest(BaseModel):
 
 
 class RenameConversationRequest(BaseModel):
-    title: str | None = None
+    title: str = Field(min_length=1, max_length=200)
+
+    @field_validator("title")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("title must not be blank")
+        return v
 
 
 class ConversationDto(CamelModel):
@@ -54,7 +62,7 @@ class MessageDto(CamelModel):
     role: str
     content: str | None
     blocks: list[Any] | None
-    sources: list[str] | None
+    sources: list[Any] | None
     follow_ups: list[Any] | None
     created_at: datetime
 

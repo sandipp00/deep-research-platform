@@ -23,7 +23,6 @@
 .lm-card b { display:grid; place-items:center; flex:0 0 auto; width:24px; height:24px; border-radius:99px; font-size:11px; color:#fff; background: linear-gradient(135deg,#8b5cf6,#ec4899); }
 .lm-card span { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .lm-card small { display:block; font-size:10px; font-weight:400; color:var(--lm-mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-/* pins */
 .lm-pin { background:none !important; border:none !important; }
 .lm-pin-wrap { position:relative; width:34px; height:34px; animation: lm-drop .55s cubic-bezier(.34,1.56,.64,1) both; }
 .lm-pin-ring { position:absolute; inset:0; border-radius:99px; background:#8b5cf6; opacity:.0; animation: lm-pulse 2.2s ease-out infinite; }
@@ -32,7 +31,6 @@
 .lm-pin.on .lm-pin-ring { opacity:.5; }
 @keyframes lm-drop { from { transform: translateY(-28px) scale(.4); opacity:0; } to { transform:none; opacity:1; } }
 @keyframes lm-pulse { 0% { transform:scale(.7); opacity:.55; } 100% { transform:scale(1.9); opacity:0; } }
-/* popup */
 .lm-popup .leaflet-popup-content-wrapper { background: var(--lm-bg); color: var(--lm-fg); border:1px solid var(--lm-bd); border-radius:16px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: var(--lm-sh); }
 .lm-popup .leaflet-popup-tip { background: var(--lm-bg); }
 .lm-popup .leaflet-popup-content { margin:10px 14px; font-size:13px; }
@@ -40,9 +38,3 @@
 .lm-popup-t { font-weight:700; }
 .lm-popup-b { margin-top:4px; font-size:12px; color: var(--lm-mute); }
 @media (prefers-reduced-motion: reduce) { .lm-pin-wrap, .lm-pin-ring { animation:none; } }
-/* neutralise global index.css leaflet filter/chrome; CARTO tiles are already themed */
-.lm-root .leaflet-tile-pane { filter: none !important; }
-.lm-root .leaflet-container { border-radius: 0; background: transparent; }
-.lm-root .leaflet-container .leaflet-control-attribution { background: transparent !important; backdrop-filter: none; }
-.lm-root .leaflet-popup-content-wrapper.lm-x, .lm-popup .leaflet-popup-content-wrapper { background: var(--lm-bg); color: var(--lm-fg); border-radius: 16px; }
-.lm-popup .leaflet-popup-tip { background: var(--lm-bg); }

@@ -23,7 +23,7 @@ export type Block =
   | { template_id: "data-table"; data: DataTableData }
   | { template_id: "insight-cards"; data: InsightCardsData }
   | { template_id: "leaflet-map"; data: LeafletMapData }
-  | { template_id: string; data: unknown };  // catch-all — unknown types fall through to FallbackBlock
+  | { template_id: string; data: unknown };
 
 export interface FollowUp { label: string; query: string; category?: string }
 
@@ -35,6 +35,7 @@ export interface Message {
   sources?: string[] | null;
   followUps?: FollowUp[] | null;
   createdAt: string;
+  clientKey?: string;
 }
 
 export interface Checkpoint {

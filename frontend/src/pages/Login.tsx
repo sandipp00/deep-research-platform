@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Sparkles, Loader2 } from "lucide-react";
 import { useAuth } from "@/store/auth";
+import { errorMessage } from "@/lib/errors";
 
 export default function Login() {
   const nav = useNavigate();
@@ -18,8 +19,8 @@ export default function Login() {
     try {
       await login(email, password);
       nav("/app");
-    } catch (e: any) {
-      setErr(e?.response?.data?.error || "Login failed");
+    } catch (e) {
+      setErr(errorMessage(e, "Login failed"));
     }
   }
 

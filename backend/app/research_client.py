@@ -1,4 +1,3 @@
-"""Streams SSE events from the research-agent service."""
 from collections.abc import AsyncIterator
 
 import httpx
@@ -17,7 +16,6 @@ class AgentEvent:
 async def stream_research(
     query: str, history: list[dict[str, str]]
 ) -> AsyncIterator[AgentEvent]:
-    """Yield each complete SSE event from the agent (event:/data: pair)."""
     body = {"query": query, "conversation_history": history}
     timeout = httpx.Timeout(connect=15.0, read=600.0, write=30.0, pool=15.0)
 
@@ -31,7 +29,7 @@ async def stream_research(
             if resp.status_code // 100 != 2:
                 body_text = await resp.aread()
                 raise RuntimeError(
-                    f"Research agent returned {resp.status_code}: {body_text.decode(errors='replace')}"
+                    f"Research agent returned {resp.status_code}: {body_text.decode(errors='replace')[:500]}"
                 )
 
             current_event: str | None = None
@@ -47,7 +45,6 @@ async def stream_research(
                     current_event = raw_line[7:].strip()
                 elif raw_line.startswith("data: "):
                     data_lines.append(raw_line[6:])
-                # ignore comments and other lines
 
             if current_event and data_lines:
                 yield AgentEvent(current_event, "\n".join(data_lines))

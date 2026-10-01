@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlsplit, urlunsplit
 
 import redis.asyncio as aioredis
 
@@ -9,22 +10,46 @@ settings = get_settings()
 
 _redis: aioredis.Redis | None = None
 
+
+def mask_url(url: str) -> str:
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return "<invalid url>"
+    if parts.password is None and parts.username is None:
+        return url
+    host = parts.hostname or ""
+    if parts.port:
+        host = f"{host}:{parts.port}"
+    user = parts.username or ""
+    netloc = f"{user}:***@{host}" if parts.password is not None else f"{user}@{host}"
+    return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+
+
 async def connect_redis() -> None:
     global _redis
-    logger.info("Connecting to Redis at %s", settings.REDIS_URL)
-    _redis = aioredis.from_url(
-        settings.REDIS_URL,
-        encoding="utf-8",
-        decode_responses=True,
-    )
-    await _redis.ping()
-    logger.info("Redis connected")
+    logger.info("Connecting to Redis at %s", mask_url(settings.REDIS_URL))
+    try:
+        _redis = aioredis.from_url(
+            settings.REDIS_URL,
+            encoding="utf-8",
+            decode_responses=True,
+            socket_connect_timeout=2,
+            socket_timeout=2,
+        )
+        await _redis.ping()
+        logger.info("Redis connected")
+    except Exception as e:
+        logger.warning("Redis unavailable, continuing without cache: %s", type(e).__name__)
 
 
 async def disconnect_redis() -> None:
     global _redis
     if _redis:
-        await _redis.aclose()
+        try:
+            await _redis.aclose()
+        except Exception:
+            logger.warning("Redis close failed")
     _redis = None
 
 
@@ -34,20 +59,16 @@ def get_redis() -> aioredis.Redis:
     return _redis
 
 
-# ── Tool result cache helpers ─────────────────────────────────
-
 async def cache_get(key: str) -> str | None:
     try:
-        r = get_redis()
-        return await r.get(key)
+        return await get_redis().get(key)
     except Exception as e:
-        logger.warning("Redis cache_get failed for %s: %s", key, e)
+        logger.warning("Redis cache_get failed for %s: %s", key, type(e).__name__)
         return None
 
 
 async def cache_set(key: str, value: str, ttl: int) -> None:
     try:
-        r = get_redis()
-        await r.set(key, value, ex=ttl)
+        await get_redis().set(key, value, ex=ttl)
     except Exception as e:
-        logger.warning("Redis cache_set failed for %s: %s", key, e)
+        logger.warning("Redis cache_set failed for %s: %s", key, type(e).__name__)
