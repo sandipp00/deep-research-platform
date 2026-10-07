@@ -174,6 +174,120 @@ def _build_map_data(places: list[Place]) -> LeafletMapData:
     )
 
 
+_CURRENCY_SYMBOLS = {"INR": "₹", "USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥"}
+_INR_SUFFIXES = (".NS", ".BO")
+_INR_INDICES = {"^NSEI", "^BSESN", "^NSEBANK"}
+_MISSING = {"", "n/a", "na", "none", "null", "nan", "-", "—"}
+_PRICE_CURRENCY_RE = re.compile(r"Current Price:\s*(₹|[A-Z]{3}\s)")
+_SIMPLE_PERCENT_RE = re.compile(r"^\s*[+-]?[\d,]*\.?\d+\s*%\s*$")
+
+
+def _to_float(raw: Any) -> float | None:
+    if raw is None:
+        return None
+    if isinstance(raw, (int, float)):
+        value = float(raw)
+    else:
+        text = re.sub(r"[₹$€£¥,%\s]", "", str(raw))
+        if text.lower() in _MISSING:
+            return None
+        try:
+            value = float(text)
+        except ValueError:
+            return None
+    if value != value or value in (float("inf"), float("-inf")):
+        return None
+    return value
+
+
+def _decimals_for(value: float, base: int = 2) -> int:
+    magnitude = abs(value)
+    if magnitude == 0 or magnitude >= 1:
+        return base
+    digits = base
+    while digits < 12 and magnitude * (10 ** digits) < 1000:
+        digits += 1
+    return digits
+
+
+def _indian_group(int_digits: str) -> str:
+    if len(int_digits) <= 3:
+        return int_digits
+    head, tail = int_digits[:-3], int_digits[-3:]
+    groups = []
+    while len(head) > 2:
+        groups.insert(0, head[-2:])
+        head = head[:-2]
+    if head:
+        groups.insert(0, head)
+    return ",".join(groups + [tail])
+
+
+def format_number(value: float, decimals: int = 2, indian: bool = False) -> str:
+    text = f"{abs(value):.{decimals}f}"
+    int_part, _, frac = text.partition(".")
+    if len(frac) > 2:
+        frac = frac.rstrip("0").ljust(2, "0")
+    sign = "-" if value < 0 and (int(int_part) or int(frac or "0")) else ""
+    grouped = _indian_group(int_part) if indian else f"{int(int_part):,}"
+    return f"{sign}{grouped}.{frac}" if frac else f"{sign}{grouped}"
+
+
+def format_money(raw: Any, currency: str = "") -> str | None:
+    value = _to_float(raw)
+    if value is None:
+        text = str(raw).strip() if raw is not None else ""
+        return None if text.lower() in _MISSING else text
+    code = currency.upper()
+    if code == "INR":
+        decimals = 0 if abs(value) >= 100000 else _decimals_for(value)
+        number = format_number(value, decimals, indian=True)
+    else:
+        number = format_number(value, _decimals_for(value))
+    if not code:
+        return number
+    symbol = _CURRENCY_SYMBOLS.get(code)
+    if symbol is None:
+        return f"{code} {number}"
+    if number.startswith("-"):
+        return f"-{symbol}{number[1:]}"
+    return f"{symbol}{number}"
+
+
+def format_percent(raw: Any) -> str | None:
+    value = _to_float(raw)
+    if value is None:
+        text = str(raw).strip() if raw is not None else ""
+        return None if text.lower() in _MISSING else text
+    return f"{value:+.2f}%"
+
+
+def format_rate(raw: Any) -> str | None:
+    value = _to_float(raw)
+    if value is None:
+        text = str(raw).strip() if raw is not None else ""
+        return None if text.lower() in _MISSING else text
+    return format_number(value, _decimals_for(value, 4))
+
+
+def _stock_currency(symbol: str, raw_output: str) -> str:
+    m = _PRICE_CURRENCY_RE.search(raw_output)
+    if m:
+        token = m.group(1).strip()
+        return "INR" if token == "₹" else token
+    upper = symbol.upper()
+    if upper.endswith(_INR_SUFFIXES) or upper in _INR_INDICES:
+        return "INR"
+    return ""
+
+
+def _severity_for(change: Any) -> str:
+    value = _to_float(change)
+    if value is None:
+        return "success" if not str(change or "").strip().startswith("-") else "warning"
+    return "warning" if value < 0 else "success"
+
+
 def _parse_financial_card(result: ToolResult) -> InsightItem | None:
     raw = result.output
     try:
@@ -182,37 +296,63 @@ def _parse_financial_card(result: ToolResult) -> InsightItem | None:
             if result.tool_name == "get_stock_price" and line.startswith("STOCK|"):
                 parts = line.split("|")
                 if len(parts) >= 4:
-                    symbol, price, change = parts[1], parts[2], parts[3]
-                    severity = "success" if not change.startswith("-") else "warning"
-                    body_parts = [f"Price: {price}", f"Change: {change}"]
-                    if len(parts) > 4 and parts[4]:
-                        body_parts.append(f"P/E: {parts[4]}")
+                    symbol = parts[1]
+                    currency = _stock_currency(symbol, raw)
+                    body_parts = []
+                    price = format_money(parts[2], currency)
+                    if price:
+                        body_parts.append(f"Price: {price}")
+                    change = format_percent(parts[3])
+                    if change:
+                        body_parts.append(f"Change: {change}")
+                    if len(parts) > 4:
+                        pe_value = _to_float(parts[4])
+                        if pe_value is not None:
+                            body_parts.append(f"P/E: {format_number(pe_value)}")
                     if len(parts) > 6:
-                        body_parts.append(f"52w: {parts[5]} – {parts[6]}")
+                        high = format_money(parts[5], currency)
+                        low = format_money(parts[6], currency)
+                        if high and low:
+                            body_parts.append(f"52w: {high} – {low}")
+                    if not body_parts:
+                        return None
                     return InsightItem(
                         title=f"{symbol} Stock Price",
                         body=" · ".join(body_parts),
-                        severity=severity,
+                        severity=_severity_for(parts[3]),
                     )
 
             elif result.tool_name == "get_forex_rate" and line.startswith("FOREX|"):
                 parts = line.split("|")
                 if len(parts) >= 5:
+                    rate = format_rate(parts[3])
+                    if not rate:
+                        return None
                     return InsightItem(
                         title=f"{parts[1]}/{parts[2]} Exchange Rate",
-                        body=f"1 {parts[1]} = {parts[3]} {parts[2]} (as of {parts[4]})",
+                        body=f"1 {parts[1]} = {rate} {parts[2]} (as of {parts[4]})",
                         severity="info",
                     )
 
             elif result.tool_name == "get_crypto_price" and line.startswith("CRYPTO|"):
                 parts = line.split("|")
                 if len(parts) >= 5:
-                    change = parts[4]
-                    severity = "success" if not change.startswith("-") else "warning"
+                    body_parts = []
+                    inr = format_money(parts[2], "INR")
+                    if inr:
+                        body_parts.append(inr)
+                    usd = format_money(parts[3], "USD")
+                    if usd:
+                        body_parts.append(usd)
+                    change = format_percent(parts[4])
+                    if change:
+                        body_parts.append(f"24h: {change}")
+                    if not body_parts:
+                        return None
                     return InsightItem(
                         title=f"{parts[1].capitalize()} Price",
-                        body=f"₹{parts[2]} · ${parts[3]} · 24h: {change}",
-                        severity=severity,
+                        body=" · ".join(body_parts),
+                        severity=_severity_for(parts[4]),
                     )
     except Exception as e:
         logger.warning("Failed to parse financial card for %s: %s", result.tool_name, e)
@@ -284,6 +424,12 @@ def _col_index(headers: list[str], predicate) -> int | None:
     return None
 
 
+def _card_change(cell: str) -> str:
+    if _SIMPLE_PERCENT_RE.match(cell):
+        return format_percent(cell) or cell
+    return cell
+
+
 def _extract_financial_cards_from_markdown(final_text: str) -> list[InsightItem]:
     if not isinstance(final_text, str) or not final_text:
         return []
@@ -324,9 +470,9 @@ def _extract_financial_cards_from_markdown(final_text: str) -> list[InsightItem]
 
             if kind == "crypto":
                 body_parts = []
-                if inr: body_parts.append(f"₹{inr}")
-                if usd: body_parts.append(f"${usd}")
-                if change: body_parts.append(f"24h: {change}")
+                if inr: body_parts.append(format_money(inr, "INR"))
+                if usd: body_parts.append(format_money(usd, "USD"))
+                if change: body_parts.append(f"24h: {_card_change(change)}")
                 if not body_parts:
                     continue
                 severity = "success" if not (change_num or "").startswith("-") else "warning"
@@ -337,8 +483,8 @@ def _extract_financial_cards_from_markdown(final_text: str) -> list[InsightItem]
                 ))
             else:
                 body_parts = []
-                if price: body_parts.append(f"Price: {price}")
-                if change: body_parts.append(f"Change: {change}")
+                if price: body_parts.append(f"Price: {format_money(price)}")
+                if change: body_parts.append(f"Change: {_card_change(change)}")
                 pe = _pluck_number(row[pe_idx]) if pe_idx is not None and len(row) > pe_idx else None
                 if pe: body_parts.append(f"P/E: {pe}")
                 if not body_parts:

@@ -89,3 +89,17 @@ async def test_generate_passes_reasoning_off_to_openrouter(monkeypatch):
 
 def test_parse_items_truncated_json_returns_empty():
     assert fug._parse_items('{"follow_ups": [{"label": "A", "query": "B", "cat') == []
+
+
+def test_prompt_forbids_out_of_scope_actions():
+    prompt = fug._SYSTEM.lower()
+    assert "email me" not in prompt
+    assert "never suggest anything to email" in prompt
+    for word in ("message", "schedule", "remind", "alerts", "add to calendar", "export", "save"):
+        assert word in prompt
+
+
+def test_prompt_keeps_categories_and_schema():
+    for cat in ("deeper", "compare", "action", "flip", "fresh"):
+        assert f'"{cat}"' in fug._SYSTEM
+    assert '"follow_ups"' in fug._SYSTEM

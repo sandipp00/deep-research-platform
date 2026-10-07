@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting Alvoff Research Agent")
+    logger.info("Starting Lumen Research Agent")
     await connect_redis()
     logger.info("Research Agent ready on port %d", settings.PORT)
     yield
@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="Alvoff Research Agent",
+        title="Lumen Research Agent",
         version="1.0.0",
         lifespan=lifespan,
     )

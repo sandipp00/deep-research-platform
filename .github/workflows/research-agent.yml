@@ -25,6 +25,9 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main' && vars.EC2_INSTANCE_ID != ''
     runs-on: ubuntu-latest
+    concurrency:
+      group: ec2-deploy
+      cancel-in-progress: false
     steps:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4

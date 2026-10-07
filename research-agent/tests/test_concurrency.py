@@ -66,11 +66,19 @@ async def test_two_web_searches_overlap(monkeypatch):
     assert len(ticks) >= 10
 
 
-async def test_mixed_sync_tools_overlap(monkeypatch):
+async def test_mixed_sync_and_async_tools_overlap(monkeypatch):
     wiki_fn, wiki_iv = _slow("Summary text")
-    stock_fn, stock_iv = _slow({"currentPrice": 100.0, "previousClose": 99.0, "currency": "USD"})
+    stock_iv = []
+
+    async def chart(client, sym):
+        start = time.perf_counter()
+        await asyncio.sleep(DELAY)
+        stock_iv.append((start, time.perf_counter()))
+        return {"regularMarketPrice": 100.0, "previousClose": 99.0, "currency": "USD"}
+
     monkeypatch.setattr(tools, "_wiki_lookup_sync", wiki_fn)
-    monkeypatch.setattr(tools, "_yf_info_sync", stock_fn)
+    monkeypatch.setattr(tools, "_yahoo_chart", chart)
+    monkeypatch.setattr(tools, "_yf_info_sync", lambda s: {})
     results, elapsed, ticks = await _run_with_ticker(
         tools.wiki_search.ainvoke({"query": "Python"}),
         tools.get_stock_price.ainvoke({"symbol": "AAPL.US"}),
@@ -116,3 +124,61 @@ async def test_overpass_deadline_returns_error_quickly(monkeypatch):
     assert elapsed < 3
     assert out.status == "error"
     assert "Overpass" in out.text
+
+
+class _MirrorClient:
+    behaviors: dict = {}
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def get(self, url, **kwargs):
+        class Resp:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return [{"lat": "12.9", "lon": "77.6"}]
+
+        return Resp()
+
+    async def post(self, url, **kwargs):
+        behavior = self.behaviors[url]
+        if behavior == "hang":
+            await asyncio.sleep(30)
+        if behavior == "fail":
+            raise RuntimeError("504")
+
+        class Resp:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"elements": [{"type": "node", "lat": 12.91, "lon": 77.61, "tags": {"name": "Cafe One"}}]}
+
+        return Resp()
+
+
+async def test_overpass_mirrors_race_in_parallel(monkeypatch):
+    a, b, c = tools._OVERPASS_MIRRORS
+    _MirrorClient.behaviors = {a: "hang", b: "hang", c: "ok"}
+    monkeypatch.setattr(tools.httpx, "AsyncClient", _MirrorClient)
+    start = time.perf_counter()
+    out = await tools._nearby("Koramangala, Bengaluru", "cafe", 3000)
+    assert time.perf_counter() - start < 3
+    assert out.status == "ok"
+    assert "Cafe One" in out.text
+
+
+async def test_overpass_failed_mirror_does_not_block_success(monkeypatch):
+    a, b, c = tools._OVERPASS_MIRRORS
+    _MirrorClient.behaviors = {a: "fail", b: "ok", c: "fail"}
+    monkeypatch.setattr(tools.httpx, "AsyncClient", _MirrorClient)
+    out = await tools._nearby("Koramangala, Bengaluru", "cafe", 3000)
+    assert out.status == "ok"

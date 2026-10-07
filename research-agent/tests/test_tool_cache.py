@@ -125,6 +125,10 @@ async def test_wiki_failures_not_cached(monkeypatch, memory_cache):
 
 
 async def test_stock_no_data_not_cached(monkeypatch, memory_cache):
+    async def chart(client, sym):
+        raise tools.SymbolNotFound(sym)
+
+    monkeypatch.setattr(tools, "_yahoo_chart", chart)
     monkeypatch.setattr(tools, "_yf_info_sync", lambda s: {})
     out = await tools.get_stock_price.ainvoke({"symbol": "ZZZZ"})
     assert out.startswith("Could not fetch stock data")
@@ -201,10 +205,12 @@ async def test_nearby_places_escapes_pipes_and_sanitizes(monkeypatch, memory_cac
 
     p = parse_place_line(place)
     assert p.name == "Shell / Express" and p.address == "MG/Road" and p.distance.endswith("km")
+    sent = len(queries)
+    assert sent >= 1
 
     bad = await tools.nearby_places.ainvoke({"place": "Bangalore", "place_type": 'fuel"](around:1,0,0);out;("'})
     assert bad.startswith("Unsupported place type")
-    assert len(queries) == 1
+    assert len(queries) == sent
 
 
 @pytest.mark.parametrize(
