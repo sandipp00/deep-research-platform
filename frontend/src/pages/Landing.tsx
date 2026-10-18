@@ -40,7 +40,7 @@ const GENERIC_ANSWER =
 const LUMEN_ANSWER =
   "Sample answer: the spec sheet states the advertised figure; two independent reviews measured less under heavy use. Each claim links to its source.";
 const SAMPLE_SOURCES = ["manufacturer.example", "reviews.example"];
-const GITHUB = "https://github.com/AnirudhGupta007/deep-research-platform";
+const GITHUB = "https://github.com/sandipp00/deep-research-platform";
 
 function Words({ text, className = "", delay = 0 }: { text: string; className?: string; delay?: number }) {
   return (
